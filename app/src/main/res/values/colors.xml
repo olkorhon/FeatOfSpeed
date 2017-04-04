@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimary">#3f51b5</color>
     <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
+    <color name="colorAccent">#ff4081</color>
+    <color name="SpeedOrange">#e48c2e</color>
+    <color name="SpeedCyan">#279eb1</color>
+    <color name="SpeedPurple">#333c5f</color>
+    <color name="Black50p">#7f000000</color>
+    <color name="Black30p">#4c000000</color>
 </resources>
