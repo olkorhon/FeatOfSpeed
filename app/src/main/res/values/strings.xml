@@ -16,4 +16,5 @@
     <string name="players">Players</string>
     <string name="start_game">Start Game</string>
     <string name="ready">Ready</string>
+    <string name="title_activity_game_map">Map</string>
 </resources>

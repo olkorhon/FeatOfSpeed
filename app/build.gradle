@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "25.0.0"
+    buildToolsVersion "25.0.2"
     defaultConfig {
         applicationId "fi.semiproot.featofspeed"
         minSdkVersion 15
@@ -26,7 +26,8 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:24.2.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
-    compile 'com.google.firebase:firebase-auth:10.2.0'
+    compile 'com.google.firebase:firebase-auth:10.2.1'
+    compile 'com.google.android.gms:play-services-maps:10.2.1'
     testCompile 'junit:junit:4.12'
 }
 
