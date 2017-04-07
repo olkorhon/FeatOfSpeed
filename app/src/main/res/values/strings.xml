@@ -1,10 +1,13 @@
 <resources>
     <string name="app_name">FeatOfSpeed</string>
-    <string name="create_game">Create Game</string>
-    <string name="join_game">Join Game</string>
+    <string name="create_game">Create</string>
+    <string name="join_game">Join</string>
     <string name="settings">Settings</string>
-    <string name="game_size">Game size(radius):</string>
-    <string name="max_viewpoints">Maximum waypoints:</string>
+    <string name="game_size">Select the game size:</string>
+    <string name="game_size_small">Small</string>
+    <string name="game_size_medium">Medium</string>
+    <string name="game_size_large">Large</string>
+    <string name="description">Description</string>
     <string name="create">Create</string>
     <string-array name="game_sizes">
         <item>Small (0.5km)</item>
@@ -16,4 +19,5 @@
     <string name="players">Players</string>
     <string name="start_game">Start Game</string>
     <string name="ready">Ready</string>
+    <string name="title_activity_game_map">Map</string>
 </resources>
