@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "714876756935",
+    "firebase_url": "https://featofspeed.firebaseio.com",
+    "project_id": "featofspeed",
+    "storage_bucket": "featofspeed.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:714876756935:android:cf1c15cd1b6ad127",
+        "android_client_info": {
+          "package_name": "fi.semiproot.featofspeed"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "714876756935-rakg2so81lckjbrjn14kjd3mvkjppg5k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "fi.semiproot.featofspeed",
+            "certificate_hash": "6b796cb0833fa69c6f30c79bca8117fd9d4fb851"
+          }
+        },
+        {
+          "client_id": "714876756935-blaa3gdriilm59pbbj2pjgc0976np8a3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBn-CkoumBUY9O6TuYR_JIfdgW5kwY9L0c"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "714876756935-blaa3gdriilm59pbbj2pjgc0976np8a3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
