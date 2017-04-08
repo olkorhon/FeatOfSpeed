@@ -20,4 +20,9 @@
     <string name="start_game">Start Game</string>
     <string name="ready">Ready</string>
     <string name="title_activity_game_map">Map</string>
+
+    <string name="North">N</string>
+    <string name="East">E</string>
+    <string name="South">S</string>
+    <string name="West">W</string>
 </resources>
