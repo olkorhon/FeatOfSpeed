@@ -30,8 +30,15 @@ public class CreateGameActivity extends AppCompatActivity {
 
         // Setup custom font:
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/unispace bold.ttf");
+        Typeface font2 = Typeface.createFromAsset(getAssets(), "fonts/unispace.ttf");
         TextView titleCreateGame = (TextView)findViewById(R.id.title_createGame);
+        TextView textViewGameSize = (TextView)findViewById(R.id.textViewGameSize);
+        TextView descriptionTitle = (TextView)findViewById(R.id.descriptionTitle);
+        TextView descriptionText = (TextView)findViewById(R.id.descriptionText);
         titleCreateGame.setTypeface(font);
+        textViewGameSize.setTypeface(font2);
+        descriptionText.setTypeface(font2);
+        descriptionTitle.setTypeface(font2);
 
         // Setup radio buttons:
         smallButton = (RadioButton)findViewById(R.id.radioButtonSmall);
@@ -53,6 +60,12 @@ public class CreateGameActivity extends AppCompatActivity {
         @Override
         public void onClick(View view) {
             Intent intent = new Intent(CreateGameActivity.this, LoadActivity.class);
+            intent.putExtra("host", true);
+            String tempNum = String.valueOf((int)(Math.random() * 9999));
+            if (tempNum.length() < 4) {
+                tempNum = "0" + tempNum;
+            }
+            intent.putExtra("code", tempNum);
             startActivity(intent);
             CreateGameActivity.this.finish();
         }
