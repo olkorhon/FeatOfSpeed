@@ -1,0 +1,13 @@
+<resources>
+    <declare-styleable name="CompassView">
+        <attr name="exampleDimension" format="dimension" />
+        <attr name="PanelColor" format="color" />
+        <attr name="TextColor" format="color" />
+        <attr name="BlobColor" format="color" />
+        <attr name="MaxAngle" format="float" />
+        <attr name="MaxBlobWidth" format="float" />
+        <attr name="MinBlobWidth" format="float" />
+        <attr name="MaxBlobHeight" format="float" />
+        <attr name="MinBlobHeight" format="float" />
+    </declare-styleable>
+</resources>
