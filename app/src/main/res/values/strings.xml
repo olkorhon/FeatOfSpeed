@@ -15,7 +15,8 @@
     <string name="start_game">Start Game</string>
     <string name="ready">Ready?</string>
     <string name="title_activity_game_map">Map</string>
-
+    <string name="signed_in_name_label">Signed in as: %1$s</string>
+    <string name="signed_out_name_label">Not signed in…</string>
     <string name="North">N</string>
     <string name="East">E</string>
     <string name="South">S</string>
