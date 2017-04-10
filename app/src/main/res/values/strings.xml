@@ -2,7 +2,9 @@
     <string name="app_name">FeatOfSpeed</string>
     <string name="create_game">Create</string>
     <string name="join_game">Join</string>
-    <string name="settings">Settings</string>
+    <string name="change_nickname">Change nickname</string>
+    <string name="ok">Ok</string>
+    <string name="cancel">Cancel</string>
     <string name="game_size">Select the game size:</string>
     <string name="game_code">Insert a game code:</string>
     <string name="game_size_small">Small</string>
@@ -15,10 +17,13 @@
     <string name="start_game">Start Game</string>
     <string name="ready">Ready?</string>
     <string name="title_activity_game_map">Map</string>
-    <string name="signed_in_name_label">Signed in as: %1$s</string>
+    <string name="signed_in_name_label">Signed in as:</string>
     <string name="signed_out_name_label">Not signed in…</string>
     <string name="North">N</string>
     <string name="East">E</string>
     <string name="South">S</string>
     <string name="West">W</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
