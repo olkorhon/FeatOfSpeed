@@ -15,12 +15,9 @@
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
         app:srcCompat="@drawable/fos_bar"
-        android:layout_marginRight="0dp"
         app:layout_constraintRight_toRightOf="parent"
-        android:layout_marginLeft="0dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="0dp"
         app:layout_constraintHorizontal_bias="0.0" />
 
     <TextView
@@ -42,7 +39,7 @@
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/constraintLayout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:layout_marginLeft="8dp"
@@ -84,7 +81,8 @@
             app:layout_constraintTop_toBottomOf="@+id/textViewGameSize"
             android:layout_marginRight="8dp"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintHorizontal_bias="0.3">
+            app:layout_constraintHorizontal_bias="0.3"
+            android:layout_marginEnd="8dp">
 
             <RadioButton
                 android:id="@+id/radioButtonSmall"

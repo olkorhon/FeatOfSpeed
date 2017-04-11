@@ -27,7 +27,7 @@ public class LobbyActivity extends AppCompatActivity {
     private ListView playerListView;
     private PlayerAdapter pAdapter;
     Button button;
-    TextView readyCountTextView;
+    TextView textViewPlayerCount;
     List<String> players;
 
     private static final List<String> PLAYERS = Arrays.asList("Pekka Pekkala",
@@ -47,38 +47,37 @@ public class LobbyActivity extends AppCompatActivity {
             code = bundle.getString("code", "0000");
         }
 
+        players = PLAYERS;
+
         // Setup custom font:
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/unispace bold.ttf");
         TextView textViewGameId = (TextView)findViewById(R.id.textViewGameId);
+        TextView textViewGameIdTitle = (TextView)findViewById(R.id.textViewGameIdTitle);
         TextView textViewPlayers = (TextView)findViewById(R.id.textViewPlayers);
-        TextView textViewReady = (TextView)findViewById(R.id.textViewReady);
+        textViewPlayerCount = (TextView)findViewById(R.id.textViewPlayerCount);
         textViewGameId.setTypeface(font);
         textViewGameId.setText(code);
+        textViewGameIdTitle.setTypeface(font);
         textViewPlayers.setTypeface(font);
-        textViewReady.setTypeface(font);
+        textViewPlayerCount.setTypeface(font);
+        textViewPlayerCount.setText(String.valueOf(players.size()));
 
         // Button
         button = (Button)findViewById(R.id.lobbyButton);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button.setEnabled(false);
+                Intent intent = new Intent(LobbyActivity.this, GameMapActivity.class);
+                startActivity(intent);
+                LobbyActivity.this.finish();
+            }
+        });
         if (isHost) {
-            button.setText("Start");
-            button.setEnabled(false); // can the host start the game without everyone ready?
         } else {
-            button.setText("Ready!");
-            button.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    button.setEnabled(false);
-                    Intent intent = new Intent(LobbyActivity.this, GameMapActivity.class);
-                    startActivity(intent);
-                    LobbyActivity.this.finish();
-                }
-            });
+            button.setVisibility(View.GONE);
         }
 
-        players = PLAYERS;
-
-        readyCountTextView = (TextView)findViewById(R.id.textViewReadyCount);
-        readyCountTextView.setText("0/" + String.valueOf(players.size()));
         playerListView = (ListView)findViewById(R.id.playerListView);
 
         pAdapter = new PlayerAdapter();
@@ -86,12 +85,6 @@ public class LobbyActivity extends AppCompatActivity {
     }
 
     private class PlayerAdapter extends BaseAdapter {
-        private int checkedCount;
-
-        public PlayerAdapter() {
-            super();
-            checkedCount = 0;
-        }
 
         @Override
         public int getCount() {
@@ -120,24 +113,7 @@ public class LobbyActivity extends AppCompatActivity {
             TextView playerName = (TextView)view.findViewById(R.id.playerName);
             playerName.setText(player);
 
-            CheckBox readyBox = (CheckBox)view.findViewById(R.id.checkBoxReady);
-            readyBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    if (isChecked) {
-                        checkedCount++;
-                    } else {
-                        checkedCount--;
-                    }
-                    String text = String.valueOf(checkedCount) + "/" +
-                            String.valueOf(LobbyActivity.this.players.size());
-                    readyCountTextView.setText(text);
-
-                    if (isHost && checkedCount == LobbyActivity.this.players.size()) {
-                        button.setEnabled(true);
-                    }
-                }
-            });
+            textViewPlayerCount.setText(String.valueOf(LobbyActivity.this.players.size()));
 
             return view;
         }

@@ -34,10 +34,8 @@ public class CreateGameActivity extends AppCompatActivity {
         TextView titleCreateGame = (TextView)findViewById(R.id.title_createGame);
         TextView textViewGameSize = (TextView)findViewById(R.id.textViewGameSize);
         TextView descriptionTitle = (TextView)findViewById(R.id.descriptionTitle);
-        TextView descriptionText = (TextView)findViewById(R.id.descriptionText);
         titleCreateGame.setTypeface(font);
         textViewGameSize.setTypeface(font2);
-        descriptionText.setTypeface(font2);
         descriptionTitle.setTypeface(font2);
 
         // Setup radio buttons:
