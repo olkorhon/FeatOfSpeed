@@ -252,7 +252,10 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     protected void startLocationUpdates() {
         Log.d(TAG, "startLocationUpdates() was called");
         mRequestingLocationUpdates = true;
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
     }
 
     protected void stopLocationUpdates() {
@@ -271,28 +274,6 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed() was called");
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        // Callback to handle askLocationPermission()
-        switch (requestCode) {
-            case MY_PERMISSIONS_REQUEST_FINE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay!
-                    mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-                    if (mCurrentLocation != null) {
-                        Log.d(TAG, "Latitude: " + mCurrentLocation.getLatitude());
-                        Log.d(TAG, "Longitude: " + mCurrentLocation.getLongitude());
-                    } else {
-                        Log.d(TAG, "mCurrentLocation was null!");
-                    }
-
-                }
-            }
-        }
     }
 
     @Override
