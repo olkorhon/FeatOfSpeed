@@ -10,7 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <uses-feature android:name="android.hardware.location.gps" />
+    <uses-feature android:name="android.hardware.screen.portrait"/>
 
     <application
         android:allowBackup="true"
@@ -18,16 +20,20 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+                  android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".CreateGameActivity" />
-        <activity android:name=".JoinGameActivity" />
-        <activity android:name=".LobbyActivity" />
+        <activity android:name=".CreateGameActivity"
+                  android:screenOrientation="portrait" />
+        <activity android:name=".JoinGameActivity"
+                  android:screenOrientation="portrait" />
+        <activity android:name=".LobbyActivity"
+                  android:screenOrientation="portrait" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
@@ -42,8 +48,10 @@
 
         <activity
             android:name=".GameMapActivity"
-            android:label="@string/title_activity_game_map"></activity>
-        <activity android:name=".LoadActivity"></activity>
+            android:label="@string/title_activity_game_map"
+            android:screenOrientation="portrait" />
+        <activity android:name=".LoadActivity"
+                  android:screenOrientation="portrait" />
     </application>
 
 </manifest>
