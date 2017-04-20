@@ -1,17 +1,33 @@
 package fi.semiproot.featofspeed;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.location.Location;
+import android.os.Handler;
+import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
-public class CreateGameActivity extends AppCompatActivity {
-    RadioButton smallButton, mediumButton, largeButton;
-    TextView description;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.LatLng;
+
+
+public class CreateGameActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks {
+
+    private static final String TAG = CreateGameActivity.class.getSimpleName();
 
     static final String[] GAME_DESCRIPTIONS = {
             "Maximum of 5 waypoints in 250m radius.",
@@ -19,14 +35,30 @@ public class CreateGameActivity extends AppCompatActivity {
             "Maximum of 6 waypoints in 2,5km radius."
     };
 
+    Button createButton;
+    RadioButton smallButton, mediumButton, largeButton;
+    TextView description;
+
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLatestLocation;
+    private LatLng mLatestLatLng;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_game);
 
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
+
         // Setup create game button:
-        Button createButton = (Button)findViewById(R.id.createButton);
+        createButton = (Button)findViewById(R.id.createButton);
         createButton.setOnClickListener(new CreateButtonOnClickListener());
+        createButton.setEnabled(false);
 
         // Setup custom font:
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/unispace bold.ttf");
@@ -53,8 +85,25 @@ public class CreateGameActivity extends AppCompatActivity {
         description.setText(GAME_DESCRIPTIONS[1]);
     }
 
-    private class CreateButtonOnClickListener implements View.OnClickListener {
+    private void updateLatestLocation() {
+        if (mGoogleApiClient != null) {
+            try {
+                mLatestLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                mLatestLatLng = new LatLng(mLatestLocation.getLatitude(), mLatestLocation.getLongitude());
+                Log.d(TAG, "Location: " + mLatestLatLng.toString());
+                createButton.setEnabled(true);
+            } catch (SecurityException e) {
+                Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
+            }
+        }
+    }
 
+    private boolean locationPermissionGranted() {
+        return (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private class CreateButtonOnClickListener implements View.OnClickListener {
         @Override
         public void onClick(View view) {
             Intent intent = new Intent(CreateGameActivity.this, LoadActivity.class);
@@ -64,6 +113,7 @@ public class CreateGameActivity extends AppCompatActivity {
                 tempNum = "0" + tempNum;
             }
             intent.putExtra("code", tempNum);
+            intent.putExtra("GAME_LAT_LNG", mLatestLatLng);
             startActivity(intent);
             CreateGameActivity.this.finish();
         }
@@ -93,5 +143,37 @@ public class CreateGameActivity extends AppCompatActivity {
                     break;
             }
         }
+    }
+
+    @Override
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
+    }
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        updateLatestLocation();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
     }
 }
