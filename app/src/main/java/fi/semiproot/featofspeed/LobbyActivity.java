@@ -15,6 +15,8 @@ import android.widget.CompoundButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class LobbyActivity extends AppCompatActivity {
 
     private boolean isHost;
     private String code;
+    private LatLng gameLatLng;
     private ListView playerListView;
     private PlayerAdapter pAdapter;
     Button button;
@@ -45,6 +48,7 @@ public class LobbyActivity extends AppCompatActivity {
         if (bundle != null) {
             isHost = bundle.getBoolean("host", false);
             code = bundle.getString("code", "0000");
+            gameLatLng = bundle.getParcelable("GAME_LAT_LNG");
         }
 
         players = PLAYERS;
