@@ -3,6 +3,8 @@ package fi.semiproot.featofspeed;
 import android.content.Context;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -10,6 +12,7 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Handler;
 import android.os.PersistableBundle;
+import android.support.annotation.ColorRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -32,6 +35,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.Arrays;
@@ -208,8 +212,25 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         Log.d(TAG, "onMapReady() was called");
         mMap = googleMap;
         centerCameraToPlayArea();
+        setMapStyle();
         setCameraBounds();
         placeWaypointMarkers();
+    }
+
+    private void setMapStyle() {
+        try {
+            // Customise the styling of the base map using a JSON object defined
+            // in a raw resource file.
+            boolean success = mMap.setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(
+                            this, R.raw.style_json));
+
+            if (!success) {
+                Log.e(TAG, "Style parsing failed.");
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.e(TAG, "Can't find style. Error: ", e);
+        }
     }
 
     private void centerCameraToPlayArea() {
@@ -230,7 +251,11 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         for (LatLng location : waypointLocs) {
             mMap.addCircle(new CircleOptions()
                 .center(location)
-                .radius(30));
+                .radius(30)
+                .strokeWidth(8)
+                .strokeColor(Color.argb(255, 63, 81, 181))
+                .fillColor(Color.argb(127, 255, 64, 129)));
+
         }
 
     }
