@@ -29,10 +29,13 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 public class GameMapActivity extends FragmentActivity implements OnMapReadyCallback, SensorEventListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
@@ -43,8 +46,17 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
     private static final String LOCATION_KEY = "location-key";
 
+    LatLng lipasto = new LatLng(65.0593177,25.4662935);
+    LatLng tokmanni = new LatLng(65.0585888, 25.4777468);
+    LatLng merle = new LatLng(65.0590863, 25.4782688);
+    LatLng kirjasto = new LatLng(65.061139, 25.4809759);
+
+
+    private final List<LatLng> DUMMY_WAYPOINT_LOCS = Arrays.asList(lipasto, tokmanni, merle, kirjasto);
+
     private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
     private LatLng gameStartLatLng;
+    private List<LatLng> waypointLocs = DUMMY_WAYPOINT_LOCS;
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -197,6 +209,7 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         mMap = googleMap;
         centerCameraToPlayArea();
         setCameraBounds();
+        placeWaypointMarkers();
     }
 
     private void centerCameraToPlayArea() {
@@ -211,6 +224,15 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         LatLng sw_corner = new LatLng(gameStartLatLng.latitude - latDelta, gameStartLatLng.longitude - lngDelta);
         LatLngBounds gameAreaBounds = new LatLngBounds(sw_corner, ne_corner);
         mMap.setLatLngBoundsForCameraTarget(gameAreaBounds);
+    }
+
+    private void placeWaypointMarkers() {
+        for (LatLng location : waypointLocs) {
+            mMap.addCircle(new CircleOptions()
+                .center(location)
+                .radius(30));
+        }
+
     }
 
     @Override
