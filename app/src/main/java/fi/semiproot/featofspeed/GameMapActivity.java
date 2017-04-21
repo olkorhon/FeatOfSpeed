@@ -24,12 +24,16 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import java.util.Set;
 
 public class GameMapActivity extends FragmentActivity implements OnMapReadyCallback, SensorEventListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 
@@ -38,6 +42,9 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     private static final int MY_PERMISSIONS_REQUEST_FINE_LOCATION = 8888;
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
     private static final String LOCATION_KEY = "location-key";
+
+    private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
+    private LatLng gameStartLatLng;
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -84,11 +91,12 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
                     .addApi(LocationServices.API)
                     .build();
         }
-
+        // Replace dummy data with location from intent
+        gameStartLatLng = DUMMY_GAME_START_LATLNG;
         updateValuesFromBundle(savedInstanceState);
 
         // Make sure that location services provides the needed accuracy
-        mLocationRequest = createLocationRequest(10000, 5000);
+        mLocationRequest = createLocationRequest(5000, 2000);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -182,26 +190,28 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         sManager.unregisterListener(this);
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
+    // Triggered when the map is ready to be used
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady() was called");
         mMap = googleMap;
-
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        float zoomLevel = 10.0f; //This goes up to 21
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney, zoomLevel));
+        centerCameraToPlayArea();
+        setCameraBounds();
     }
 
+    private void centerCameraToPlayArea() {
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(gameStartLatLng, 13));
+    }
+
+    private void setCameraBounds() {
+        // magic constants for bounds
+        float latDelta = 0.010f;
+        float lngDelta = 0.03f;
+        LatLng ne_corner = new LatLng(gameStartLatLng.latitude + latDelta, gameStartLatLng.longitude + lngDelta);
+        LatLng sw_corner = new LatLng(gameStartLatLng.latitude - latDelta, gameStartLatLng.longitude - lngDelta);
+        LatLngBounds gameAreaBounds = new LatLngBounds(sw_corner, ne_corner);
+        mMap.setLatLngBoundsForCameraTarget(gameAreaBounds);
+    }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
