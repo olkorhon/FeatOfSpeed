@@ -42,6 +42,7 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
     private GoogleApiClient mGoogleApiClient;
     private Location mLatestLocation;
     private LatLng mLatestLatLng;
+    private String selectedGameSize;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,12 +84,17 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         // Setup game description text:
         description = (TextView)findViewById(R.id.descriptionText);
         description.setText(GAME_DESCRIPTIONS[1]);
+        selectedGameSize = "small";
     }
 
     private void updateLatestLocation() {
         if (mGoogleApiClient != null) {
             try {
                 mLatestLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                if (mLatestLocation == null) {
+
+                }
+
                 mLatestLatLng = new LatLng(mLatestLocation.getLatitude(), mLatestLocation.getLongitude());
                 Log.d(TAG, "Location: " + mLatestLatLng.toString());
                 createButton.setEnabled(true);
@@ -108,12 +114,8 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         public void onClick(View view) {
             Intent intent = new Intent(CreateGameActivity.this, LoadActivity.class);
             intent.putExtra("host", true);
-            String tempNum = String.valueOf((int)(Math.random() * 9999));
-            if (tempNum.length() < 4) {
-                tempNum = "0" + tempNum;
-            }
-            intent.putExtra("code", tempNum);
             intent.putExtra("GAME_LAT_LNG", mLatestLatLng);
+            intent.putExtra("gameSize", selectedGameSize);
             startActivity(intent);
             CreateGameActivity.this.finish();
         }
@@ -129,16 +131,19 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
                 case R.id.radioButtonSmall:
                     if (checked) {
                         description.setText(GAME_DESCRIPTIONS[0]);
+                        selectedGameSize = "small";
                     }
                     break;
                 case R.id.radioButtonMedium:
                     if (checked) {
                         description.setText(GAME_DESCRIPTIONS[1]);
+                        selectedGameSize = "medium";
                     }
                     break;
                 case R.id.radioButtonLarge:
                     if (checked) {
                         description.setText(GAME_DESCRIPTIONS[2]);
+                        selectedGameSize = "large";
                     }
                     break;
             }

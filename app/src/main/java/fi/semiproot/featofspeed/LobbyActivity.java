@@ -17,6 +17,7 @@ import android.widget.TextView;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,16 +27,11 @@ public class LobbyActivity extends AppCompatActivity {
 
     private boolean isHost;
     private String code;
-    private LatLng gameLatLng;
+    private ArrayList<Player> players;
     private ListView playerListView;
     private PlayerAdapter pAdapter;
     Button button;
     TextView textViewPlayerCount;
-    List<String> players;
-
-    private static final List<String> PLAYERS = Arrays.asList("Pekka Pekkala",
-            "Heikki Heikkilä", "Jonne Jonnela", "Iiro Iirola", "Henna Hennala",
-            "Taina Tainala", "Jukka Jukkola");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,10 +44,8 @@ public class LobbyActivity extends AppCompatActivity {
         if (bundle != null) {
             isHost = bundle.getBoolean("host", false);
             code = bundle.getString("code", "0000");
-            gameLatLng = bundle.getParcelable("GAME_LAT_LNG");
+            players = (ArrayList<Player>) bundle.getSerializable("players");
         }
-
-        players = PLAYERS;
 
         // Setup custom font:
         Typeface font = Typeface.createFromAsset(getAssets(), "fonts/unispace bold.ttf");
@@ -112,7 +106,7 @@ public class LobbyActivity extends AppCompatActivity {
                         .inflate(R.layout.player_listview_item, viewGroup, false);
             }
 
-            String player = (String)getItem(i);
+            String player = ((Player)getItem(i)).getNickName();
 
             TextView playerName = (TextView)view.findViewById(R.id.playerName);
             playerName.setText(player);

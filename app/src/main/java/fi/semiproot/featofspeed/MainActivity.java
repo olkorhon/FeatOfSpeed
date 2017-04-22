@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements ChangeNicknameFra
         Button buttonChangeNickname = (Button)findViewById(R.id.buttonChangeNickname);
         buttonChangeNickname.setOnClickListener(new ChangeNicknameButtonListener());
 
-        prefs = getPreferences(Context.MODE_PRIVATE);
+        prefs = getSharedPreferences("FeetOfSpeed", Context.MODE_PRIVATE);
 
         final TextView loginStatusLabel = (TextView) findViewById(R.id.loginStatusLabel);
         textViewNickname = (TextView)findViewById(R.id.textViewNickname);
@@ -93,6 +93,8 @@ public class MainActivity extends AppCompatActivity implements ChangeNicknameFra
                     SharedPreferences.Editor editor = prefs.edit();
                     editor.putString("nickname", displayName);
                     editor.apply();
+
+                    textViewNickname.setText(prefs.getString("nickname", ""));
 
                     String userUid = user.getUid();
                     Log.d(TAG, "onAuthStateChanged:signed_in: " + userUid);
@@ -241,9 +243,6 @@ public class MainActivity extends AppCompatActivity implements ChangeNicknameFra
         super.onStart();
         mAuth.addAuthStateListener(mAuthListener);
 
-        textViewNickname.setText(prefs.getString("nickname", ""));
-        Log.d("FOS", "2:" + prefs.getString("nickname", "false"));
-
         if (mGoogleApiClient != null) {
             mGoogleApiClient.connect();
         }
@@ -270,6 +269,7 @@ public class MainActivity extends AppCompatActivity implements ChangeNicknameFra
         // Make sure that settings provides the needed accuracy
         checkLocationSettings();
         checkLocationPermission();
+        Log.d(TAG, "GoogleApiClient connected!");
     }
 
     @Override
@@ -279,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements ChangeNicknameFra
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+        Log.d(TAG, "GoogleApiClient connection failed.");
     }
     // END GoogleApiClient callbacks
 }
