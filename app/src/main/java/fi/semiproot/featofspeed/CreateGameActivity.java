@@ -89,12 +89,12 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         if (mGoogleApiClient != null) {
             try {
                 mLatestLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-                mLatestLatLng = new LatLng(mLatestLocation.getLatitude(), mLatestLocation.getLongitude());
-                Log.d(TAG, "Location: " + mLatestLatLng.toString());
-                createButton.setEnabled(true);
             } catch (SecurityException e) {
                 Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
             }
+            mLatestLatLng = new LatLng(mLatestLocation.getLatitude(), mLatestLocation.getLongitude());
+            Log.d(TAG, "Location: " + mLatestLatLng.toString());
+            createButton.setEnabled(true);
         }
     }
 

@@ -1,5 +1,6 @@
 package fi.semiproot.featofspeed;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -24,6 +25,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -38,6 +40,7 @@ import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -50,23 +53,33 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
     private static final String LOCATION_KEY = "location-key";
 
+    // Dummy data for testing
     LatLng lipasto = new LatLng(65.0593177,25.4662935);
     LatLng tokmanni = new LatLng(65.0585888, 25.4777468);
     LatLng merle = new LatLng(65.0590863, 25.4782688);
     LatLng kirjasto = new LatLng(65.061139, 25.4809759);
 
-
     private final List<LatLng> DUMMY_WAYPOINT_LOCS = Arrays.asList(lipasto, tokmanni, merle, kirjasto);
-
     private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
-    private LatLng gameStartLatLng;
-    private List<LatLng> waypointLocs = DUMMY_WAYPOINT_LOCS;
+    // END dummy data
 
+    // Map and location fields
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
     private Location mCurrentLocation;
     private boolean mRequestingLocationUpdates = false;
+
+    // Geofence fields
+    private final int GEOFENCE_RADIUS = 30;             // Meters
+    private final int GEOFENCE_EXPIRATION = 3600000;    // Hour in ms
+    protected ArrayList<Geofence> mGeofenceList;
+    private PendingIntent mGeofencePendingIntent;
+
+    // Game related fields
+    private LatLng gameStartLatLng;
+    private List<LatLng> waypointLocs = DUMMY_WAYPOINT_LOCS;
+
 
     // Compass functionality
     CompassView compassWidget;
@@ -99,19 +112,14 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game_map);
 
-        // Create an instance of GoogleAPIClient.
-        if (mGoogleApiClient == null) {
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
+        // Get an instance of GoogleAPIClient.
+        mGoogleApiClient = getGoogleApiClient();
+
         // Replace dummy data with location from intent
         gameStartLatLng = DUMMY_GAME_START_LATLNG;
         updateValuesFromBundle(savedInstanceState);
 
-        // Make sure that location services provides the needed accuracy
+        // Location request specifies how often the app gets a location from google services
         mLocationRequest = createLocationRequest(5000, 2000);
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -119,6 +127,8 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        mGeofenceList = new ArrayList<Geofence>();
+        populateGeofenceList(waypointLocs);
         // Fetch relevant sensor instances
         sManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -131,6 +141,22 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         orientation = new float[3];
 
         compassUpdateHandler = new Handler();
+    }
+
+    private void populateGeofenceList(List<LatLng> waypointLocs) {
+        for (LatLng location : waypointLocs) {
+            String latStr = String.valueOf(location.latitude);
+            String lngStr = String.valueOf(location.longitude);
+            String reqId = latStr.substring(latStr.length() - 4) + lngStr.substring(lngStr.length() - 4);
+            Log.d(TAG, "Request id for location " + location.toString() + "is " + reqId);
+            mGeofenceList.add(new Geofence.Builder()
+                .setRequestId(reqId)
+                .setCircularRegion(location.latitude, location.longitude, GEOFENCE_RADIUS)
+                .setExpirationDuration(GEOFENCE_EXPIRATION)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                        Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build());
+        }
     }
 
     private void updateValuesFromBundle(Bundle savedInstanceState) {
@@ -160,6 +186,16 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
                     new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                     MY_PERMISSIONS_REQUEST_FINE_LOCATION);
         }
+    }
+
+    private synchronized GoogleApiClient getGoogleApiClient() {
+        if (mGoogleApiClient == null) {
+            return new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        } else return mGoogleApiClient;
     }
 
     @Override
@@ -255,9 +291,7 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
                 .strokeWidth(8)
                 .strokeColor(Color.argb(255, 63, 81, 181))
                 .fillColor(Color.argb(127, 255, 64, 129)));
-
         }
-
     }
 
     @Override
