@@ -16,6 +16,16 @@ public class GeofenceTransitionsIntentService extends IntentService {
      */
     protected static final String TAG = "GeofenceTransitionsIS";
 
+    protected static final String ENTERED_GEOFENCE = "FOS_GEOFENCE_ENTERED";
+    protected static final String EXITED_GEOFENCE = "FOS_GEOFENCE_EXITED";
+
+    /**
+     * Default constructor for this service
+     */
+    public GeofenceTransitionsIntentService() {
+        super(TAG);
+    }
+
     /**
      * Creates an IntentService.  Invoked by your subclass's constructor.
      *
@@ -41,10 +51,15 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
             Log.d(TAG, "Entered geofence");
+            sendBroadcast(new Intent(GeofenceTransitionsIntentService.ENTERED_GEOFENCE));
             // send intent to show stamp overlay
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             Log.d(TAG, "Exited geofence");
+            sendBroadcast(new Intent(GeofenceTransitionsIntentService.EXITED_GEOFENCE));
             // send intent to hide stamp overlay
+        }
+        else {
+            Log.d(TAG, "Unhandled transition type: " + geofenceTransition);
         }
     }
 }

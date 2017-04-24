@@ -1,8 +1,10 @@
 package fi.semiproot.featofspeed;
 
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.IntentSender;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Color;
@@ -12,8 +14,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Handler;
-import android.os.PersistableBundle;
-import android.support.annotation.ColorRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -21,11 +21,18 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.common.api.Result;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -45,7 +52,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class GameMapActivity extends FragmentActivity implements OnMapReadyCallback, SensorEventListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
+public class GameMapActivity extends FragmentActivity implements
+        SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener, OnMapReadyCallback, LocationListener, ResultCallback<Status> {
 
     private static final String TAG = GameMapActivity.class.getSimpleName();
 
@@ -58,8 +66,9 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     LatLng tokmanni = new LatLng(65.0585888, 25.4777468);
     LatLng merle = new LatLng(65.0590863, 25.4782688);
     LatLng kirjasto = new LatLng(65.061139, 25.4809759);
+    LatLng mumina = new LatLng(65.061129, 25.48029);
 
-    private final List<LatLng> DUMMY_WAYPOINT_LOCS = Arrays.asList(lipasto, tokmanni, merle, kirjasto);
+    private final List<LatLng> DUMMY_WAYPOINT_LOCS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
     private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
     // END dummy data
 
@@ -71,15 +80,17 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     private boolean mRequestingLocationUpdates = false;
 
     // Geofence fields
-    private final int GEOFENCE_RADIUS = 30;             // Meters
+    private final int GEOFENCE_RADIUS = 100;             // Meters
     private final int GEOFENCE_EXPIRATION = 3600000;    // Hour in ms
     protected ArrayList<Geofence> mGeofenceList;
     private PendingIntent mGeofencePendingIntent;
 
+    // Broadcast receiver
+    GeofenceEventReceiver mGeofenceEventReceiver;
+
     // Game related fields
     private LatLng gameStartLatLng;
     private List<LatLng> waypointLocs = DUMMY_WAYPOINT_LOCS;
-
 
     // Compass functionality
     CompassView compassWidget;
@@ -129,6 +140,7 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
 
         mGeofenceList = new ArrayList<Geofence>();
         populateGeofenceList(waypointLocs);
+
         // Fetch relevant sensor instances
         sManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -213,6 +225,16 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
             startLocationUpdates();
         }
+
+        // Create a broadcast receiver
+        if (mGeofenceEventReceiver == null)
+            mGeofenceEventReceiver = new GeofenceEventReceiver();
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(GeofenceTransitionsIntentService.ENTERED_GEOFENCE);
+        intentFilter.addAction(GeofenceTransitionsIntentService.EXITED_GEOFENCE);
+        registerReceiver(mGeofenceEventReceiver, intentFilter);
+
         // Start refreshing compass
         compassUpdating = true;
         compassUpdateHandler.post(compassUpdaterRunnable);
@@ -230,7 +252,19 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     @Override
     protected void onPause() {
         super.onPause();
+
+        // Release and unregister listener
+        if (mGeofenceEventReceiver != null) {
+            unregisterReceiver(mGeofenceEventReceiver);
+            mGeofenceEventReceiver = null;
+        }
+
+        // Remove geofences
+        unregisterGeofences();
+
         stopLocationUpdates();
+
+
     }
 
     @Override
@@ -283,17 +317,103 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         mMap.setLatLngBoundsForCameraTarget(gameAreaBounds);
     }
 
+    private void registerGeofences() {
+        if (!mGoogleApiClient.isConnected()) {
+            Toast.makeText(this, "Not connected to google play, cannot register new geofences", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            LocationServices.GeofencingApi.addGeofences(
+                    mGoogleApiClient,
+                    // The GeofenceRequest object.
+                    getGeofencingRequest(),
+                    // A pending intent that that is reused when calling removeGeofences(). This
+                    // pending intent is used to generate an intent when a matched geofence
+                    // transition is observed.
+                    getGeofencePendingIntent()
+            ).setResultCallback(this); // Result processed in onResult().
+        } catch (SecurityException securityException) {
+            // Catch exception generated if the app does not use ACCESS_FINE_LOCATION permission.
+            logSecurityException(securityException);
+        }
+    }
+
+    /**
+     * Removes geofences, which stops further notifications when the device enters or exits
+     * previously registered geofences.
+     */
+    public void unregisterGeofences() {
+        if (!mGoogleApiClient.isConnected()) {
+            Toast.makeText(this, "Not connected to google play, cannot remove geofences", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            // Remove geofences.
+            LocationServices.GeofencingApi.removeGeofences(
+                    mGoogleApiClient,
+                    // This is the same pending intent that was used in addGeofences().
+                    getGeofencePendingIntent()
+            ).setResultCallback(this); // Result processed in onResult().
+        } catch (SecurityException securityException) {
+            // Catch exception generated if the app does not use ACCESS_FINE_LOCATION permission.
+            logSecurityException(securityException);
+        }
+    }
+
+    // Helper method to log a security exception raised by a service that needs ACCESS_FINE_LOCATION
+    private void logSecurityException(SecurityException securityException) {
+        Log.e(TAG, "Invalid location permission. " +
+                "You need to use ACCESS_FINE_LOCATION with geofences", securityException);
+    }
+
+    /**
+     * Builds and returns a GeofencingRequest. Specifies the list of geofences to be monitored.
+     * Also specifies how the geofence notifications are initially triggered.
+     */
+    private GeofencingRequest getGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+
+        // Should send an enter notification if user is already in a geofence
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+
+        // Add list of geofences to the request
+        builder.addGeofences(mGeofenceList);
+
+        // Return the constructed request
+        return builder.build();
+    }
+
+    /**
+     * Gets a PendingIntent to send with the request to add or remove Geofences. Location Services
+     * issues the Intent inside this PendingIntent whenever a geofence transition occurs for the
+     * current list of geofences.
+     *
+     * @return A PendingIntent for the IntentService that handles geofence transitions.
+     */
+    private PendingIntent getGeofencePendingIntent() {
+        // Reuse the PendingIntent if we already have it.
+        if (mGeofencePendingIntent != null) {
+            return mGeofencePendingIntent;
+        }
+        Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
+        // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when calling
+        // addGeofences() and removeGeofences().
+        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
     private void placeWaypointMarkers() {
         for (LatLng location : waypointLocs) {
             mMap.addCircle(new CircleOptions()
                 .center(location)
-                .radius(30)
+                .radius(GEOFENCE_RADIUS)
                 .strokeWidth(8)
                 .strokeColor(Color.argb(255, 63, 81, 181))
                 .fillColor(Color.argb(127, 255, 64, 129)));
         }
     }
 
+    // React to acceleration and magnetometer readings
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor == accelometer) {
@@ -335,6 +455,11 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
     public void onConnected(@Nullable Bundle bundle) {
         Log.d(TAG, "onConnected() was called");
         askLocationPermission();
+
+        // Register geofences
+        registerGeofences();
+
+        // Start listening to location updates
         if (!mRequestingLocationUpdates) {
             startLocationUpdates();
         }
@@ -380,5 +505,31 @@ public class GameMapActivity extends FragmentActivity implements OnMapReadyCallb
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
         savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
         super.onSaveInstanceState(savedInstanceState);
+    }
+
+    // Handle the result from adding geofences to the list of actually checked geofences
+    @Override
+    public void onResult(Status status) {
+        if (status.isSuccess()) {
+            Toast.makeText(this, "Geofences succesfully modified", Toast.LENGTH_SHORT).show();
+        } else {
+            // Get the status code for the error and log it using a user-friendly message.
+            String errorMessage = GeofenceErrorMessages.getErrorString(this,
+                    status.getStatusCode());
+            Log.e(TAG, errorMessage);
+        }
+    }
+
+    private class GeofenceEventReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(GeofenceTransitionsIntentService.ENTERED_GEOFENCE)) {
+                Log.d(TAG, "Activity received Entered broadcast");
+            } else if (intent.getAction().equals(GeofenceTransitionsIntentService.EXITED_GEOFENCE)) {
+                Log.d(TAG, "Activity received Exited broadcast");
+            } else {
+                Log.e(TAG, "Activity received irrelevant broadcast, intent filter needs tuning");
+            }
+        }
     }
 }
