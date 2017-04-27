@@ -35,12 +35,13 @@ public class LoadActivity extends AppCompatActivity {
 
     private static final String TAG = LoadActivity.class.getSimpleName();
 
+    private String from;
     // Game data:
-    private boolean isHost;
     private String code;
     private LatLng gameLatLng;
     private String gameSize;
     private ArrayList<Player> playersList;
+    private ArrayList<Waypoint> waypointList;
 
     private FirebaseAuth mAuth;
     private SharedPreferences prefs;
@@ -56,7 +57,7 @@ public class LoadActivity extends AppCompatActivity {
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            isHost = bundle.getBoolean("host", false);
+            from = bundle.getString("from", "");
             gameLatLng = bundle.getParcelable("GAME_LAT_LNG");
             gameSize = bundle.getString("gameSize", "small");
             code = bundle.getString("code", "");
@@ -66,6 +67,7 @@ public class LoadActivity extends AppCompatActivity {
         prefs = getSharedPreferences("FeetOfSpeed", Context.MODE_PRIVATE);
 
         playersList = new ArrayList<>();
+        waypointList = new ArrayList<>();
     }
 
     @Override
@@ -75,38 +77,42 @@ public class LoadActivity extends AppCompatActivity {
         String url;
         JSONObject reqObject = new JSONObject();
 
-        if (isHost) {
-            url = "https://us-central1-featofspeed.cloudfunctions.net/createGame";
+        switch (from) {
+            case "CreateGameActivity":
+                url = "https://us-central1-featofspeed.cloudfunctions.net/createGame";
+                try {
+                    JSONObject location = new JSONObject();
+                    location.put("latitude", gameLatLng.latitude);
+                    location.put("longitude", gameLatLng.longitude);
 
-            try {
-                JSONObject location = new JSONObject();
-                location.put("latitude", gameLatLng.latitude);
-                location.put("longitude", gameLatLng.longitude);
+                    JSONObject config = new JSONObject();
+                    config.put("size", gameSize);
+                    config.put("location", location);
 
-                JSONObject config = new JSONObject();
-                config.put("size", gameSize);
-                config.put("location", location);
+                    JSONObject host = new JSONObject();
+                    host.put("user_id", mAuth.getCurrentUser().getUid());
+                    host.put("nickname", prefs.getString("nickname", "Anonymous"));
 
-                JSONObject host = new JSONObject();
-                host.put("user_id", mAuth.getCurrentUser().getUid());
-                host.put("nickname", prefs.getString("nickname", "Anonymous"));
+                    reqObject.put("config", config);
+                    reqObject.put("host", host);
 
-                reqObject.put("config", config);
-                reqObject.put("host", host);
+                } catch (JSONException ex) {
+                }
+                break;
+            case "JoinGameActivity":
+                url = "https://us-central1-featofspeed.cloudfunctions.net/joinGame?game_id=" + code;
+                try {
+                    JSONObject player = new JSONObject();
+                    player.put("user_id", mAuth.getCurrentUser().getUid());
+                    player.put("nickname", prefs.getString("nickname", "Anonymous"));
 
-            } catch (JSONException ex) {
-            }
-        } else {
-            url = "https://us-central1-featofspeed.cloudfunctions.net/joinGame?game_id=" + code;
-
-            try {
-                JSONObject player = new JSONObject();
-                player.put("user_id", mAuth.getCurrentUser().getUid());
-                player.put("nickname", prefs.getString("nickname", "Anonymous"));
-
-                reqObject.put("player", player);
-            } catch (JSONException ex) {
-            }
+                    reqObject.put("player", player);
+                } catch (JSONException ex) {
+                }
+                break;
+            default:
+                url = "";
+                break;
         }
 
         Log.d(TAG, "URL: " + url);
@@ -116,13 +122,15 @@ public class LoadActivity extends AppCompatActivity {
             public void onResponse(JSONObject response) {
                 Log.d(TAG, response.toString());
 
+                JSONObject game;
+
                 try {
                     JSONArray errors = response.getJSONArray("errors");
                     if (errors != null && errors.length() > 0) {
                         Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
                         LoadActivity.this.finish();
                     } else {
-                        JSONObject game = response.getJSONObject("game");
+                        game = response.getJSONObject("game");
                         code = String.valueOf(game.getInt("game_id"));
                         int max = 4 - code.length();
                         for (int i = 0; i < max; i++) {
@@ -131,34 +139,86 @@ public class LoadActivity extends AppCompatActivity {
                         Log.d(TAG, "GameCode: " + code);
 
                         JSONArray players = game.getJSONArray("players");
-                        if (players != null) {
-                            for (int i = 0; i < players.length(); i++) {
-                                //JSONObject player = players.getJSONObject(i);
+
+                        for (int i = 0; i < players.length(); i++) {
+                            JSONObject player = players.getJSONObject(i);
+
+                            String userId = player.getString("user_id");
+
+                            if (player.getBoolean("currently_playing")) {
                                 playersList.add(new Player(
-                                        players.getString(i), "Name"));//.getString("user_id"),
-                                        //player.getString("nickname")));
+                                        userId,
+                                        player.getString("nickname")));
                             }
                         }
 
-
-                        goLobby();
                     }
                 } catch (Exception ex) {
+                    Log.d(TAG, "An error when processing response.");
                     LoadActivity.this.finish();
+                }
+
+                try {
+                    game = response.getJSONObject("game");
+
+                    int gameState = game.getInt("current_state");
+
+                    if (gameState == 3) {
+
+                        JSONArray waypoints = game.getJSONArray("waypoints");
+
+                        for (int i = 0; i < waypoints.length(); i++) {
+                            JSONObject waypoint = waypoints.getJSONObject(i);
+
+                            int id = waypoint.getInt("waypoint_id");
+                            String name = waypoint.getString("name");
+
+                            JSONObject geometry = waypoint.getJSONObject("geometry");
+                            JSONObject location = geometry.getJSONObject("location");
+
+                            double lat = location.getDouble("lat");
+                            double lng = location.getDouble("lng");
+
+                            waypointList.add(new Waypoint(id, name, lat, lng));
+                        }
+
+                        Log.d(TAG, "Waypoints: " + waypointList.toString());
+                        goGame();
+                    } else if (gameState == 0 || gameState == 1) {
+                        goLobby();
+                    } else {
+                        Log.d(TAG, "GameState is not valid! Is: " + gameState);
+                    }
+                } catch (Exception ex) {
+                    Log.d(TAG, "Error happened when getting gameState!");
                 }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                NetworkResponse res = error.networkResponse;
-                if (res != null) {
-                    Log.d(TAG, "Error status: " + res.statusCode);
-                    try {
-                        Log.d(TAG, "Error: " + new String(res.data, "UTF-8"));
-                    } catch (UnsupportedEncodingException ex) {
 
+                if (error instanceof TimeoutError || error instanceof NoConnectionError) {
+                    Toast.makeText(getApplicationContext(),
+                            "Connection timed out!",
+                            Toast.LENGTH_LONG).show();
+                } else if (error instanceof AuthFailureError) {
+                    Log.d(TAG, "AuthFailureError");
+                } else if (error instanceof ServerError) {
+                    Log.d(TAG, "ServerError");
+                } else if (error instanceof NetworkError) {
+                    NetworkResponse res = error.networkResponse;
+                    if (res != null) {
+                        Log.d(TAG, "Error status: " + res.statusCode);
+                        try {
+                            Log.d(TAG, "Error: " + new String(res.data, "UTF-8"));
+                        } catch (UnsupportedEncodingException ex) {
+
+                        }
                     }
+                } else if (error instanceof ParseError) {
+                    Log.d(TAG, "ParseError happened!");
                 }
+
                 LoadActivity.this.finish();
             }
         });
@@ -166,12 +226,24 @@ public class LoadActivity extends AppCompatActivity {
         HttpService.getInstance(this).addToRequestQueue(req);
     }
 
+    private void goGame() {
+        Intent intent = new Intent(LoadActivity.this, GameMapActivity.class);
+
+        Bundle bundle = new Bundle();
+        bundle.putString("code", from);
+        bundle.putSerializable("waypoints", waypointList);
+        intent.putExtras(bundle);
+
+        startActivity(intent);
+        LoadActivity.this.finish();
+    }
+
     private void goLobby() {
         Log.d(TAG, "Going to lobby");
         Intent intent = new Intent(LoadActivity.this, LobbyActivity.class);
 
         Bundle bundle = new Bundle();
-        bundle.putBoolean("host", isHost);
+        bundle.putString("from", from);
         bundle.putString("code", code);
         bundle.putSerializable("players", playersList);
         intent.putExtras(bundle);

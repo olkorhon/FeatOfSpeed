@@ -119,7 +119,7 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         @Override
         public void onClick(View view) {
             Intent intent = new Intent(CreateGameActivity.this, LoadActivity.class);
-            intent.putExtra("host", true);
+            intent.putExtra("from", TAG);
             intent.putExtra("GAME_LAT_LNG", mLatestLatLng);
             intent.putExtra("gameSize", selectedGameSize);
             startActivity(intent);

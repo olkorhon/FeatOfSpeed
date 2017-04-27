@@ -12,6 +12,8 @@ import android.widget.TextView;
 
 public class JoinGameActivity extends AppCompatActivity {
 
+    private static final String TAG = JoinGameActivity.class.getSimpleName();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,6 +41,7 @@ public class JoinGameActivity extends AppCompatActivity {
                     code = "0" + code;
                 }
                 intent.putExtra("code", code);
+                intent.putExtra("from", TAG);
                 startActivity(intent);
                 JoinGameActivity.this.finish();
             }
