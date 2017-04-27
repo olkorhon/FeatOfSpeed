@@ -133,12 +133,13 @@ public class LoadActivity extends AppCompatActivity {
                         JSONArray players = game.getJSONArray("players");
                         if (players != null) {
                             for (int i = 0; i < players.length(); i++) {
-                                JSONObject player = players.getJSONObject(i);
+                                //JSONObject player = players.getJSONObject(i);
                                 playersList.add(new Player(
-                                        player.getString("user_id"),
-                                        player.getString("nickname")));
+                                        players.getString(i), "Name"));//.getString("user_id"),
+                                        //player.getString("nickname")));
                             }
                         }
+
 
                         goLobby();
                     }
@@ -166,6 +167,7 @@ public class LoadActivity extends AppCompatActivity {
     }
 
     private void goLobby() {
+        Log.d(TAG, "Going to lobby");
         Intent intent = new Intent(LoadActivity.this, LobbyActivity.class);
 
         Bundle bundle = new Bundle();

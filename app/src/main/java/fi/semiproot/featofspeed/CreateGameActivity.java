@@ -14,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
@@ -23,6 +24,11 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 
 public class CreateGameActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks {
@@ -91,14 +97,14 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         if (mGoogleApiClient != null) {
             try {
                 mLatestLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-                if (mLatestLocation == null) {
-
-                }
-
                 mLatestLatLng = new LatLng(mLatestLocation.getLatitude(), mLatestLocation.getLongitude());
                 Log.d(TAG, "Location: " + mLatestLatLng.toString());
                 createButton.setEnabled(true);
             } catch (SecurityException e) {
+                Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
+            }
+            catch (NullPointerException e) {
+                Toast.makeText(this, "Could not fetch initial location, cannot start", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
             }
         }
