@@ -110,6 +110,9 @@ public class LoadActivity extends AppCompatActivity {
                 } catch (JSONException ex) {
                 }
                 break;
+            case "LobbyActivity":
+                url = "https://us-central1-featofspeed.cloudfunctions.net/startGame?game_id=" + code;
+                break;
             default:
                 url = "";
                 break;
@@ -166,20 +169,10 @@ public class LoadActivity extends AppCompatActivity {
                     if (gameState == 3) {
 
                         JSONArray waypoints = game.getJSONArray("waypoints");
-
                         for (int i = 0; i < waypoints.length(); i++) {
-                            JSONObject waypoint = waypoints.getJSONObject(i);
-
-                            int id = waypoint.getInt("waypoint_id");
-                            String name = waypoint.getString("name");
-
-                            JSONObject geometry = waypoint.getJSONObject("geometry");
-                            JSONObject location = geometry.getJSONObject("location");
-
-                            double lat = location.getDouble("lat");
-                            double lng = location.getDouble("lng");
-
-                            waypointList.add(new Waypoint(id, name, lat, lng));
+                            Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
+                            if (waypoint != null)
+                                waypointList.add(waypoint);
                         }
 
                         Log.d(TAG, "Waypoints: " + waypointList.toString());

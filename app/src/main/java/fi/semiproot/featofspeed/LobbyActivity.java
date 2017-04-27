@@ -44,19 +44,29 @@ public class LobbyActivity extends AppCompatActivity {
     Button button;
     TextView textViewPlayerCount;
 
+    private ArrayList<Waypoint> waypoints;
+
+    FirebaseDatabase database;
+    DatabaseReference playerReference;
+    DatabaseReference waypointReference;
+    DatabaseReference stateReference;
+    private ValueEventListener playerListener;
+    private ValueEventListener waypointListener;
+    private ValueEventListener stateListener;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_lobby);
 
-        // Initiialize firebase connection
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        database = FirebaseDatabase.getInstance();
 
         // Get extras:
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
-            isHost = bundle.getBoolean("host", false);
+            Log.d(TAG, "EXTRA:" + bundle.getString("from", ""));
+            isHost = (bundle.getString("from", "").equals("CreateGameActivity"));
             code = bundle.getString("code", "0000");
             players = (ArrayList<Player>) bundle.getSerializable("players");
         }
@@ -80,33 +90,39 @@ public class LobbyActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 button.setEnabled(false);
-                Intent intent = new Intent(LobbyActivity.this, GameMapActivity.class);
+                Intent intent = new Intent(LobbyActivity.this, LoadActivity.class);
+                intent.putExtra("code", code);
+                intent.putExtra("from", "LobbyActivity");
                 startActivity(intent);
                 LobbyActivity.this.finish();
             }
         });
-        if (isHost) {
-        } else {
-            button.setVisibility(View.GONE);
-        }
+
+        // Hide start until waypoints are found
+        button.setVisibility(View.GONE);
 
         playerListView = (ListView)findViewById(R.id.playerListView);
 
         pAdapter = new PlayerAdapter();
         playerListView.setAdapter(pAdapter);
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
 
         if (code != null) {
             // Link to database updates that happen to this game
-            DatabaseReference playerRef = database.getReference("games/" + code + "/players");
-            DatabaseReference stateRef = database.getReference("games/" + code + "/current_state");
+            playerReference = database.getReference("games/" + code + "/players");
+            waypointReference = database.getReference("games/" + code + "/waypoints");
+            stateReference = database.getReference("games/" + code + "/current_state");
 
-            playerRef.addValueEventListener(new ValueEventListener() { // Read from the database
+            playerListener = playerReference.addValueEventListener(new ValueEventListener() { // Read from the database
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     // This method is called once with the initial value and again whenever data at this location is updated.
                     String value = dataSnapshot.toString();
-                    Log.d(TAG, "Value is: " + value);
+                    Log.d(TAG, "Players is now: " + value);
 
                     // Fetch players
                     List<Object> players_snapshot = (List<Object>) (dataSnapshot.getValue());
@@ -133,14 +149,92 @@ public class LobbyActivity extends AppCompatActivity {
                 }
             });
 
+            waypointListener = waypointReference.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // This method is called once with the initial value and again whenever data at this location is updated.
+                    String value = dataSnapshot.toString();
+                    Log.d(TAG, "Waypoints changed to: " + value);
+
+                    // Fetch new waypoints
+                    List<Object> waypoints_snapshot = (List<Object>) dataSnapshot.getValue();
+
+                    if (waypoints_snapshot != null)
+                    {
+                        if (waypoints_snapshot.size() > 0) {
+                            waypoints = new ArrayList<>();
+
+                            // Fetch waypoints
+                            for (Object obj : waypoints_snapshot) {
+                                Map<String, Object> waypoint = (Map<String, Object>) obj;
+                                waypoints.add(Waypoint.fromMap(waypoint));
+                            }
+
+                            // Show start button
+                            if (isHost) {
+                                button.setVisibility(View.VISIBLE);
+                            }
+                        }
+                        else {
+
+                        }
+                    } else {
+                        Log.d(TAG, "S");
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
 
             // Listen to gamestate change
+            stateListener = stateReference.addValueEventListener(new ValueEventListener() { // Read from the database
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    // This method is called once with the initial value and again whenever data at this location is updated.
+                    String value = dataSnapshot.toString();
+                    Log.d(TAG, "Current state is now: " + value);
 
+                    // Fetch players
+                    int state = ((Long)dataSnapshot.getValue()).intValue();
+
+                    if (state == 3) {
+                        if (waypoints != null) {
+                            Intent intent = new Intent(LobbyActivity.this, GameMapActivity.class);
+
+                            Bundle bundle = new Bundle();
+                            bundle.putString("code", "LobbyActivity");
+                            bundle.putSerializable("waypoints", waypoints);
+                            intent.putExtras(bundle);
+
+                            startActivity(intent);
+                            LobbyActivity.this.finish();
+                        }
+                        else {
+                            Log.d(TAG, "No waypoints! There is no way to start the game");
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+                    // Failed to read value
+                    Log.w(TAG, "Failed to read value.", error.toException());
+                }
+            });
         }
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
 
-
-
+        // Unregister listeners
+        playerReference.removeEventListener(playerListener);
+        waypointReference.removeEventListener(waypointListener);
+        stateReference.removeEventListener(stateListener);
     }
 
     private class PlayerAdapter extends BaseAdapter {
