@@ -98,31 +98,28 @@ public class LobbyActivity extends AppCompatActivity {
 
         if (code != null) {
             // Link to database updates that happen to this game
-            DatabaseReference myRef = database.getReference("games/" + code);
-            myRef.addValueEventListener(new ValueEventListener() { // Read from the database
+            DatabaseReference playerRef = database.getReference("games/" + code + "/players");
+            DatabaseReference stateRef = database.getReference("games/" + code + "/current_state");
+
+            playerRef.addValueEventListener(new ValueEventListener() { // Read from the database
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    // This method is called once with the initial value and again
-                    // whenever data at this location is updated.
+                    // This method is called once with the initial value and again whenever data at this location is updated.
                     String value = dataSnapshot.toString();
                     Log.d(TAG, "Value is: " + value);
 
                     // Fetch players
-                    List<String> player_list = (List<String>) (dataSnapshot.child("players").getValue());
-                    List<Object> player_history_list = (List<Object>) (dataSnapshot.child("player_history").getValue());
+                    List<Object> players_snapshot = (List<Object>) (dataSnapshot.getValue());
 
                     // Clear old players and add new ones
                     players.clear();
-                    for (int i = 0; i < player_history_list.size(); i++) {
+                    for (int i = 0; i < players_snapshot.size(); i++) {
                         // We know what is in the list so we can cast the player_history_list element to a Map<String, Object>
-                        Map<String, Object> player_history_map = (Map<String, Object>) player_history_list.get(i);
+                        Map<String, Object> playerDataMap = (Map<String, Object>) players_snapshot.get(i);
 
                         // Try to find a matching id from the list of current players
-                        for (String player_id : player_list) {
-                            // If the player is in the game, add to list
-                            if (player_id.equals(player_history_map.get("user_id"))) {
-                                players.add(new Player(player_id, (String)player_history_map.get("nickname")));
-                            }
+                        if (playerDataMap.get("currently_playing").equals(true)) {
+                            players.add(new Player((String)playerDataMap.get("user_id"), (String)playerDataMap.get("nickname")));
                         }
                     }
 
@@ -135,7 +132,15 @@ public class LobbyActivity extends AppCompatActivity {
                     Log.w(TAG, "Failed to read value.", error.toException());
                 }
             });
+
+
+            // Listen to gamestate change
+
         }
+
+
+
+
     }
 
     private class PlayerAdapter extends BaseAdapter {
