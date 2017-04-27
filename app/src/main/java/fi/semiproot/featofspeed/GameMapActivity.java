@@ -21,14 +21,12 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
-import com.google.android.gms.common.api.Result;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.Geofence;
@@ -36,7 +34,6 @@ import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -45,12 +42,10 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
-import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 public class GameMapActivity extends FragmentActivity implements
         SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener, OnMapReadyCallback, LocationListener, ResultCallback<Status> {
@@ -62,13 +57,13 @@ public class GameMapActivity extends FragmentActivity implements
     private static final String LOCATION_KEY = "location-key";
 
     // Dummy data for testing
-    LatLng lipasto = new LatLng(65.0593177,25.4662935);
-    LatLng tokmanni = new LatLng(65.0585888, 25.4777468);
-    LatLng merle = new LatLng(65.0590863, 25.4782688);
-    LatLng kirjasto = new LatLng(65.061139, 25.4809759);
-    LatLng mumina = new LatLng(65.061129, 25.48029);
+    Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
+    Waypoint tokmanni = new Waypoint(1, "Tokmanni", 65.0585888, 25.4777468);
+    Waypoint merle = new Waypoint(2, "Parturi-kampaamo Merle", 65.0590863, 25.4782688);
+    Waypoint kirjasto = new Waypoint(3, "Kaijonharjun kirjasto", 65.061139, 25.4809759);
+    Waypoint mumina = new Waypoint(4, "Munina", 65.061129, 25.48029);
 
-    private final List<LatLng> DUMMY_WAYPOINT_LOCS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
+    private final List<Waypoint> DUMMY_WAYPOINTS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
     private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
     // END dummy data
 
@@ -90,7 +85,9 @@ public class GameMapActivity extends FragmentActivity implements
 
     // Game related fields
     private LatLng gameStartLatLng;
-    private List<LatLng> waypointLocs = DUMMY_WAYPOINT_LOCS;
+    private List<Waypoint> mAllWaypoints = DUMMY_WAYPOINTS;
+    // TODO: add List<visitedWaypoints>
+    private List<Waypoint> visitedWaypoints;
 
     // Compass functionality
     CompassView compassWidget;
@@ -139,7 +136,7 @@ public class GameMapActivity extends FragmentActivity implements
         mapFragment.getMapAsync(this);
 
         mGeofenceList = new ArrayList<Geofence>();
-        populateGeofenceList(waypointLocs);
+        populateGeofenceList(mAllWaypoints);
 
         // Fetch relevant sensor instances
         sManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -155,19 +152,17 @@ public class GameMapActivity extends FragmentActivity implements
         compassUpdateHandler = new Handler();
     }
 
-    private void populateGeofenceList(List<LatLng> waypointLocs) {
-        for (LatLng location : waypointLocs) {
-            String latStr = String.valueOf(location.latitude);
-            String lngStr = String.valueOf(location.longitude);
-            String reqId = latStr.substring(latStr.length() - 4) + lngStr.substring(lngStr.length() - 4);
-            Log.d(TAG, "Request id for location " + location.toString() + "is " + reqId);
+    private void populateGeofenceList(List<Waypoint> waypointLocs) {
+        for (Waypoint waypoint : waypointLocs) {
+            String reqId = waypoint.getName();
             mGeofenceList.add(new Geofence.Builder()
                 .setRequestId(reqId)
-                .setCircularRegion(location.latitude, location.longitude, GEOFENCE_RADIUS)
+                .setCircularRegion(waypoint.getLat(), waypoint.getLng(), GEOFENCE_RADIUS)
                 .setExpirationDuration(GEOFENCE_EXPIRATION)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
                         Geofence.GEOFENCE_TRANSITION_EXIT)
                 .build());
+            Log.d(TAG, "Geofence set for waypoint " + reqId);
         }
     }
 
@@ -399,13 +394,14 @@ public class GameMapActivity extends FragmentActivity implements
         Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
         // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when calling
         // addGeofences() and removeGeofences().
-        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return mGeofencePendingIntent;
     }
 
     private void placeWaypointMarkers() {
-        for (LatLng location : waypointLocs) {
+        for (Waypoint waypoint : mAllWaypoints) {
             mMap.addCircle(new CircleOptions()
-                .center(location)
+                .center(new LatLng(waypoint.getLat(), waypoint.getLng()))
                 .radius(GEOFENCE_RADIUS)
                 .strokeWidth(8)
                 .strokeColor(Color.argb(255, 63, 81, 181))
@@ -445,12 +441,13 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
-    // GoogleApiClient.ConnectionCallbacks
+    // Compass sensor cb
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         Log.d(TAG, "onAccuracyChanged() was called");
     }
 
+    // START GoogleApiClient callbacks
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         Log.d(TAG, "onConnected() was called");
@@ -465,6 +462,18 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.d(TAG, "onConnectionSuspended() was called");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d(TAG, "onConnectionFailed() was called");
+    }
+    // END GoogleApiClient callbacks
+
+    // START Location callbacks
     protected void startLocationUpdates() {
         Log.d(TAG, "startLocationUpdates() was called");
         mRequestingLocationUpdates = true;
@@ -481,25 +490,14 @@ public class GameMapActivity extends FragmentActivity implements
     }
 
     @Override
-    public void onConnectionSuspended(int i) {
-        Log.d(TAG, "onConnectionSuspended() was called");
-    }
-    // END GoogleApiClient.ConnectionCallbacks
-
-    // GoogleApiClient.OnConnectionFailedListener
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.d(TAG, "onConnectionFailed() was called");
-    }
-
-    @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "onLocationChanged() was called");
         mCurrentLocation = location;
         // UpdateUI();
         Log.d(TAG, "onLocationChanged: " + location.getLatitude() + "; " + location.getLongitude());
     }
-
+    // END Location callbacks
+    
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
