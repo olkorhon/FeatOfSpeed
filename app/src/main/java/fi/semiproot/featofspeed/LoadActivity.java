@@ -223,7 +223,7 @@ public class LoadActivity extends AppCompatActivity {
         Intent intent = new Intent(LoadActivity.this, GameMapActivity.class);
 
         Bundle bundle = new Bundle();
-        bundle.putString("code", from);
+        bundle.putString("code", code);
         bundle.putSerializable("waypoints", waypointList);
         intent.putExtras(bundle);
 

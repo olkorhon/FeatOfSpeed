@@ -33,7 +33,7 @@ public class Waypoint implements Serializable {
     }
 
     public int getId() {
-        return this.id;
+        return id;
     }
 
     public static Waypoint fromMap(Map<String, Object> map) {
@@ -54,8 +54,8 @@ public class Waypoint implements Serializable {
 
             JSONObject location = obj.getJSONObject("location");
 
-            double lat = obj.getDouble("lat");
-            double lng = obj.getDouble("lng");
+            double lat = location.getDouble("lat");
+            double lng = location.getDouble("lng");
 
             return new Waypoint(id, name, lat, lng);
         }
