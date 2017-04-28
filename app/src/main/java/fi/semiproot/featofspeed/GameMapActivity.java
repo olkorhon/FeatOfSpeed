@@ -17,6 +17,7 @@ import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -48,7 +49,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class GameMapActivity extends FragmentActivity implements
-        SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener, OnMapReadyCallback, LocationListener, ResultCallback<Status> {
+        SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener,
+        OnMapReadyCallback, LocationListener, ResultCallback<Status>, StampWaypointFragment.StampWaypointDialogListener {
 
     private static final String TAG = GameMapActivity.class.getSimpleName();
 
@@ -242,6 +244,9 @@ public class GameMapActivity extends FragmentActivity implements
             sManager.registerListener(this, accelometer, 60000);
             sManager.registerListener(this, magnetometer, 60000);
         }
+
+        DialogFragment stampDialog = StampWaypointFragment.getInstance(lipasto);
+        stampDialog.show(getSupportFragmentManager(), "stamp");
     }
 
     @Override
@@ -516,6 +521,11 @@ public class GameMapActivity extends FragmentActivity implements
                     status.getStatusCode());
             Log.e(TAG, errorMessage);
         }
+    }
+
+    @Override
+    public void onWaypointStamped(Waypoint waypoint) {
+
     }
 
     private class GeofenceEventReceiver extends BroadcastReceiver {
