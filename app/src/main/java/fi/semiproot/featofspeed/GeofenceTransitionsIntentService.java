@@ -3,11 +3,15 @@ package fi.semiproot.featofspeed;
 import android.app.IntentService;
 import android.app.Service;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class GeofenceTransitionsIntentService extends IntentService {
@@ -51,12 +55,35 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
             Log.d(TAG, "Entered geofence");
-            sendBroadcast(new Intent(GeofenceTransitionsIntentService.ENTERED_GEOFENCE));
-            // send intent to show stamp overlay
+            Intent broadcast_intent = new Intent(GeofenceTransitionsIntentService.ENTERED_GEOFENCE);
+
+            // Fetch ids of triggered geofences
+            ArrayList<String> triggered_ids = new ArrayList<>();
+            for (Geofence fence : geofencingEvent.getTriggeringGeofences()) {
+                triggered_ids.add(fence.getRequestId());
+            }
+
+            // send intent to show stamp alert
+            Bundle extras = new Bundle();
+            extras.putStringArrayList("ids", triggered_ids);
+            broadcast_intent.putExtras(extras);
+            sendBroadcast(broadcast_intent);
+
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             Log.d(TAG, "Exited geofence");
-            sendBroadcast(new Intent(GeofenceTransitionsIntentService.EXITED_GEOFENCE));
-            // send intent to hide stamp overlay
+            Intent broadcast_intent = new Intent(GeofenceTransitionsIntentService.EXITED_GEOFENCE);
+
+            // Fetch ids of triggered geofences
+            ArrayList<String> triggered_ids = new ArrayList<>();
+            for (Geofence fence : geofencingEvent.getTriggeringGeofences()) {
+                triggered_ids.add(fence.getRequestId());
+            }
+
+            // send intent to show stamp alert
+            Bundle extras = new Bundle();
+            extras.putStringArrayList("ids", triggered_ids);
+            broadcast_intent.putExtras(extras);
+            sendBroadcast(broadcast_intent);
         }
         else {
             Log.d(TAG, "Unhandled transition type: " + geofenceTransition);

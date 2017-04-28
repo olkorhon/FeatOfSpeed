@@ -64,13 +64,13 @@ public class GameMapActivity extends FragmentActivity implements
     private static final String VISITED_WAYPOINTS_KEY = "visited-waypoints";
 
     // Dummy data for testing
-    Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
-    Waypoint tokmanni = new Waypoint(1, "Tokmanni", 65.0585888, 25.4777468);
-    Waypoint merle = new Waypoint(2, "Parturi-kampaamo Merle", 65.0590863, 25.4782688);
-    Waypoint kirjasto = new Waypoint(3, "Kaijonharjun kirjasto", 65.061139, 25.4809759);
-    Waypoint mumina = new Waypoint(4, "Munina", 65.061129, 25.48029);
+    //Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
+    //Waypoint tokmanni = new Waypoint(1, "Tokmanni", 65.0585888, 25.4777468);
+    //Waypoint merle = new Waypoint(2, "Parturi-kampaamo Merle", 65.0590863, 25.4782688);
+    //Waypoint kirjasto = new Waypoint(3, "Kaijonharjun kirjasto", 65.061139, 25.4809759);
+    //Waypoint mumina = new Waypoint(4, "Munina", 65.061129, 25.48029);
 
-    private final List<Waypoint> DUMMY_WAYPOINTS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
+    //private final List<Waypoint> DUMMY_WAYPOINTS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
     private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
     // END dummy data
 
@@ -96,6 +96,9 @@ public class GameMapActivity extends FragmentActivity implements
     //private ArrayList<Waypoint> mAllWaypoints = new ArrayList<>(DUMMY_WAYPOINTS);
     private ArrayList<Waypoint> mAllWaypoints;
     private HashMap<Integer, Date> mVisitedWaypoints;
+
+    // Dialog alert
+    DialogFragment stampDialog;
 
     // Compass functionality
     CompassView compassWidget;
@@ -172,7 +175,7 @@ public class GameMapActivity extends FragmentActivity implements
 
     private void populateGeofenceList(List<Waypoint> waypointLocs) {
         for (Waypoint waypoint : waypointLocs) {
-            String reqId = waypoint.getName();
+            String reqId = "FOS_" + gameCode + "_" + waypoint.getId();
             mGeofenceList.add(new Geofence.Builder()
                 .setRequestId(reqId)
                 .setCircularRegion(waypoint.getLat(), waypoint.getLng(), GEOFENCE_RADIUS)
@@ -260,9 +263,6 @@ public class GameMapActivity extends FragmentActivity implements
             sManager.registerListener(this, accelometer, 60000);
             sManager.registerListener(this, magnetometer, 60000);
         }
-
-        DialogFragment stampDialog = StampWaypointFragment.getInstance(lipasto);
-        stampDialog.show(getSupportFragmentManager(), "stamp");
     }
 
     @Override
@@ -553,13 +553,57 @@ public class GameMapActivity extends FragmentActivity implements
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(GeofenceTransitionsIntentService.ENTERED_GEOFENCE)) {
                 Log.d(TAG, "Activity received Entered broadcast");
+
+                // Fetch and parse Waypoints from intent
+                Bundle extras = intent.getExtras();
+                ArrayList<String> ids = extras.getStringArrayList("ids");
+                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
+                for (int i = 0; i < ids.size(); i++) {
+                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
+                }
+
+                // Start dialog
+                stampDialog = StampWaypointFragment.getInstance(triggered_waypoints.get(0));
+                stampDialog.show(getSupportFragmentManager(), "stamp");
+
+                // Do something with waypoints here
                 // TODO: add code to show stamping overlay on the UI
             } else if (intent.getAction().equals(GeofenceTransitionsIntentService.EXITED_GEOFENCE)) {
                 Log.d(TAG, "Activity received Exited broadcast");
+
+                // Fetch and parse Waypoints from intent
+                Bundle extras = intent.getExtras();
+                ArrayList<String> ids = extras.getStringArrayList("ids");
+                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
+                for (int i = 0; i < ids.size(); i++) {
+                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
+                }
+
+                // Close stamp dialog if it visible and not null
+                if (stampDialog != null) {
+                    if (stampDialog.getDialog().isShowing()) {
+                        stampDialog.getDialog().dismiss();
+                    }
+                }
+
+                // Do something with waypoints here
                 // TODO: add code to hide stamping overlay on the UI
             } else {
                 Log.e(TAG, "Activity received irrelevant broadcast, intent filter needs tuning");
             }
         }
+    }
+
+    private Waypoint getWaypointWithReguestId(String request_id) {
+        String[] request_parts = request_id.split("_");
+        int id = Integer.parseInt(request_parts[request_parts.length - 1]);
+
+        for (Waypoint waypoint : mAllWaypoints) {
+            if (waypoint.getId() == id) {
+                return waypoint;
+            }
+        }
+
+        return null;
     }
 }
