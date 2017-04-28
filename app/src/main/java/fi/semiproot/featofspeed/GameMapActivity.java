@@ -43,9 +43,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameMapActivity extends FragmentActivity implements
         SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener, OnMapReadyCallback, LocationListener, ResultCallback<Status> {
@@ -55,6 +59,7 @@ public class GameMapActivity extends FragmentActivity implements
     private static final int MY_PERMISSIONS_REQUEST_FINE_LOCATION = 8888;
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
     private static final String LOCATION_KEY = "location-key";
+    private static final String VISITED_WAYPOINTS_KEY = "visited-waypoints";
 
     // Dummy data for testing
     Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
@@ -84,10 +89,11 @@ public class GameMapActivity extends FragmentActivity implements
     GeofenceEventReceiver mGeofenceEventReceiver;
 
     // Game related fields
+    private String gameCode;
     private LatLng gameStartLatLng;
-    private List<Waypoint> mAllWaypoints = DUMMY_WAYPOINTS;
-    // TODO: add List<visitedWaypoints>
-    private List<Waypoint> visitedWaypoints;
+    //private ArrayList<Waypoint> mAllWaypoints = new ArrayList<>(DUMMY_WAYPOINTS);
+    private ArrayList<Waypoint> mAllWaypoints;
+    private HashMap<Integer, Date> mVisitedWaypoints;
 
     // Compass functionality
     CompassView compassWidget;
@@ -123,9 +129,18 @@ public class GameMapActivity extends FragmentActivity implements
         // Get an instance of GoogleAPIClient.
         mGoogleApiClient = getGoogleApiClient();
 
-        // Replace dummy data with location from intent
+        // Get game data from LoadActivity's intent
+        Bundle bundle = getIntent().getExtras();
+        if (bundle != null) {
+            gameCode = bundle.getString("code", "0000");
+            mAllWaypoints = (ArrayList<Waypoint>) bundle.getSerializable("waypoints");
+        } else {
+            Log.d(TAG, "Intent extras from LoadActivity are missing!!!");
+        }
+        // TODO: Replace dummy data with location from intent
         gameStartLatLng = DUMMY_GAME_START_LATLNG;
         updateValuesFromBundle(savedInstanceState);
+
 
         // Location request specifies how often the app gets a location from google services
         mLocationRequest = createLocationRequest(5000, 2000);
@@ -136,6 +151,7 @@ public class GameMapActivity extends FragmentActivity implements
         mapFragment.getMapAsync(this);
 
         mGeofenceList = new ArrayList<Geofence>();
+        mVisitedWaypoints = new HashMap<Integer, Date>();
         populateGeofenceList(mAllWaypoints);
 
         // Fetch relevant sensor instances
@@ -258,7 +274,6 @@ public class GameMapActivity extends FragmentActivity implements
         unregisterGeofences();
 
         stopLocationUpdates();
-
 
     }
 
@@ -409,6 +424,11 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
+    // TODO: call this function when stamp button is clicked
+    private void markWaypointAsVisited(Waypoint waypoint) {
+        mVisitedWaypoints.put(waypoint.getId(), new Date());
+    }
+
     // React to acceleration and magnetometer readings
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -523,8 +543,10 @@ public class GameMapActivity extends FragmentActivity implements
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(GeofenceTransitionsIntentService.ENTERED_GEOFENCE)) {
                 Log.d(TAG, "Activity received Entered broadcast");
+                // TODO: add code to show stamping overlay on the UI
             } else if (intent.getAction().equals(GeofenceTransitionsIntentService.EXITED_GEOFENCE)) {
                 Log.d(TAG, "Activity received Exited broadcast");
+                // TODO: add code to hide stamping overlay on the UI
             } else {
                 Log.e(TAG, "Activity received irrelevant broadcast, intent filter needs tuning");
             }
