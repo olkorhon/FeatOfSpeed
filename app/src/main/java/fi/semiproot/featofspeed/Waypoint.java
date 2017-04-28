@@ -32,6 +32,10 @@ public class Waypoint implements Serializable {
         return this.lng;
     }
 
+    public int getId() {
+        return this.id;
+    }
+
     public static Waypoint fromMap(Map<String, Object> map) {
         int id = ((Long)map.get("waypoint_id")).intValue();
         String name = (String)map.get("nickname");
