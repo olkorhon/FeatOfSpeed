@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="fi.semiproot.featofspeed">
+    package="fi.semiproot.featofspeed">
 
     <!--
          The ACCESS_COARSE/FINE_LOCATION permissions are not required to use
          Google Maps Android API v2, but you must specify either coarse or fine
          location permissions for the 'MyLocation' functionality. 
     -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-feature android:name="android.hardware.location.gps" />
-    <uses-feature android:name="android.hardware.screen.portrait"/>
+    <uses-feature android:name="android.hardware.screen.portrait" />
 
     <application
         android:allowBackup="true"
@@ -21,21 +21,25 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service android:name=".GeofenceTransitionsIntentService" />
+
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".CreateGameActivity"
-                  android:screenOrientation="portrait" />
-        <activity android:name=".JoinGameActivity"
-                  android:screenOrientation="portrait" />
-        <activity android:name=".LobbyActivity"
-                  android:screenOrientation="portrait" />
+        <activity
+            android:name=".CreateGameActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".JoinGameActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".LobbyActivity"
+            android:screenOrientation="portrait" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
@@ -52,7 +56,10 @@
             android:name=".GameMapActivity"
             android:label="@string/title_activity_game_map"
             android:screenOrientation="portrait" />
-        <activity android:name=".LoadActivity"
-                  android:screenOrientation="portrait" />
+        <activity
+            android:name=".LoadActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".ResultsActivity"></activity>
     </application>
+
 </manifest>
