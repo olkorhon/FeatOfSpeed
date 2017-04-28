@@ -138,12 +138,17 @@ public class GameMapActivity extends FragmentActivity implements
         Bundle bundle = getIntent().getExtras();
         if (bundle != null) {
             gameCode = bundle.getString("code", "0000");
+            gameStartLatLng = bundle.getParcelable("GAME_LAT_LNG");
             mAllWaypoints = (ArrayList<Waypoint>) bundle.getSerializable("waypoints");
         } else {
             Log.d(TAG, "Intent extras from LoadActivity are missing!!!");
         }
-        // TODO: Replace dummy data with location from intent
-        gameStartLatLng = DUMMY_GAME_START_LATLNG;
+
+        if (gameStartLatLng == null) {
+            Log.d(TAG, "Game start location missing, using dummy value...");
+            gameStartLatLng = DUMMY_GAME_START_LATLNG;
+        }
+
         updateValuesFromBundle(savedInstanceState);
 
 

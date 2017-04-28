@@ -224,6 +224,7 @@ public class LoadActivity extends AppCompatActivity {
 
         Bundle bundle = new Bundle();
         bundle.putString("code", code);
+        bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
         bundle.putSerializable("waypoints", waypointList);
         intent.putExtras(bundle);
 
@@ -238,6 +239,7 @@ public class LoadActivity extends AppCompatActivity {
         Bundle bundle = new Bundle();
         bundle.putString("from", from);
         bundle.putString("code", code);
+        bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
         bundle.putSerializable("players", playersList);
         intent.putExtras(bundle);
 

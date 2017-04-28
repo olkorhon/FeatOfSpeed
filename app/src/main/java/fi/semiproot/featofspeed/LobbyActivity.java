@@ -53,6 +53,7 @@ public class LobbyActivity extends AppCompatActivity {
     private ValueEventListener playerListener;
     private ValueEventListener waypointListener;
     private ValueEventListener stateListener;
+    private LatLng gameLatLng;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +69,7 @@ public class LobbyActivity extends AppCompatActivity {
             Log.d(TAG, "EXTRA:" + bundle.getString("from", ""));
             isHost = (bundle.getString("from", "").equals("CreateGameActivity"));
             code = bundle.getString("code", "0000");
+            gameLatLng = bundle.getParcelable("GAME_LAT_LNG");
             players = (ArrayList<Player>) bundle.getSerializable("players");
         }
 
@@ -91,8 +93,11 @@ public class LobbyActivity extends AppCompatActivity {
             public void onClick(View v) {
                 button.setEnabled(false);
                 Intent intent = new Intent(LobbyActivity.this, LoadActivity.class);
-                intent.putExtra("code", code);
-                intent.putExtra("from", "LobbyActivity");
+                Bundle bundle = new Bundle();
+                bundle.putString("code", code);
+                bundle.putString("from", "LobbyActivity");
+                bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
+                intent.putExtras(bundle);
                 startActivity(intent);
                 LobbyActivity.this.finish();
             }
@@ -207,6 +212,7 @@ public class LobbyActivity extends AppCompatActivity {
                             Bundle bundle = new Bundle();
                             bundle.putString("code", "LobbyActivity");
                             bundle.putSerializable("waypoints", waypoints);
+                            bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
                             intent.putExtras(bundle);
 
                             startActivity(intent);
