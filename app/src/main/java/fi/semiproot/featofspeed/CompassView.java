@@ -11,6 +11,11 @@ import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
 
+import com.google.android.gms.maps.model.LatLng;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * TODO: document your custom view class.
  */
@@ -55,6 +60,9 @@ public class CompassView extends View
     private float angleVisible;
     private float[] target_angles;
 
+    private LatLng pos;
+    private List<Waypoint> waypoints;
+
     // Constructors
     public CompassView(Context context)
     {
@@ -87,10 +95,11 @@ public class CompassView extends View
         angleVisible = 80;
         target_angles = new float[] {20f, 180f, 270f};
 
-        directions = new String[] { getResources().getString(R.string.East),
+        directions = new String[] {
+                getResources().getString(R.string.North),
+                getResources().getString(R.string.East),
                 getResources().getString(R.string.South),
-                getResources().getString(R.string.West),
-                getResources().getString(R.string.North) };
+                getResources().getString(R.string.West) };
 
         // Load attributes
         final TypedArray a = getContext().obtainStyledAttributes(
@@ -138,9 +147,48 @@ public class CompassView extends View
         invalidateTextPaintAndMeasurements();
     }
 
+    public void setPos(LatLng pos) {
+        this.pos = pos;
+
+        if (waypoints != null)
+            calculateAngles();
+    }
+
+    public void setWaypoints(List<Waypoint> waypoints) {
+        this.waypoints = waypoints;
+
+        if (pos != null)
+            calculateAngles();
+    }
+
+    private void calculateAngles() {
+        if (this.target_angles.length != this.waypoints.size())
+            this.target_angles = new float[this.waypoints.size()];
+
+        for (int i = 0; i < waypoints.size(); i++) {
+            this.target_angles[i] = (float)angleFromCoordinate(this.pos.latitude, this.pos.longitude, this.waypoints.get(i).getLat(), this.waypoints.get(i).getLng());
+        }
+    }
+
+    private double angleFromCoordinate(double lat1, double long1, double lat2, double long2) {
+        double dLon = (long2 - long1);
+
+        double y = Math.sin(dLon) * Math.cos(lat2);
+        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
+                * Math.cos(lat2) * Math.cos(dLon);
+
+        double brng = Math.atan2(y, x);
+
+        brng = Math.toDegrees(brng);
+        brng = (brng + 360) % 360;
+        brng = 360 - brng; // count degrees counter-clockwise - remove to make clockwise
+
+        return brng;
+    }
+
     public void refresh() {
         float difference = angularDistance(angleVisible, angleReal);
-        angleVisible = 0.7f * angleVisible + 0.3f * (angleVisible + difference);
+        angleVisible = angleReal;//0.7f * angleVisible + 0.3f * (angleVisible + difference);
         invalidate();
     }
 
@@ -271,15 +319,5 @@ public class CompassView extends View
     public void setActualRotation(float angle)
     {
         this.angleReal = angle;
-    }
-
-    public void setPosition(Location location)
-    {
-
-    }
-
-    public void setTargets(Location[] locations)
-    {
-
     }
 }
