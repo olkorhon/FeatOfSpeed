@@ -41,6 +41,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -101,6 +102,7 @@ public class GameMapActivity extends FragmentActivity implements
     private ArrayList<Waypoint> mAllWaypoints;
     private ArrayList<Waypoint> mVisitedWaypoints;
     private ArrayList<Date> mVisitedTimestamps;
+    private ArrayList<Circle> mWaypointCircles;
 
     // Dialog alert
     DialogFragment stampDialog;
@@ -165,6 +167,7 @@ public class GameMapActivity extends FragmentActivity implements
         mGeofenceList = new ArrayList<Geofence>();
         mVisitedWaypoints = new ArrayList<Waypoint>();
         mVisitedTimestamps = new ArrayList<Date>();
+        mWaypointCircles = new ArrayList<Circle>();
 
         updateValuesFromBundle(savedInstanceState);
 
@@ -440,12 +443,14 @@ public class GameMapActivity extends FragmentActivity implements
 
     private void placeWaypointMarkers() {
         for (Waypoint waypoint : mAllWaypoints) {
-            mMap.addCircle(new CircleOptions()
+            Circle circle = mMap.addCircle(new CircleOptions()
                 .center(new LatLng(waypoint.getLat(), waypoint.getLng()))
                 .radius(GEOFENCE_RADIUS)
                 .strokeWidth(8)
                 .strokeColor(Color.argb(255, 63, 81, 181))
                 .fillColor(Color.argb(127, 255, 64, 129)));
+            circle.setTag(waypoint.getName());
+            mWaypointCircles.add(circle);
         }
     }
 
@@ -453,6 +458,13 @@ public class GameMapActivity extends FragmentActivity implements
     private void markWaypointAsVisited(Waypoint waypoint) {
         mVisitedWaypoints.add(waypoint);
         mVisitedTimestamps.add(new Date());
+        // Change circle style
+        for (Circle circle : mWaypointCircles) {
+            if (circle.getTag().equals(waypoint.getName())) {
+                circle.setRadius(GEOFENCE_RADIUS/4f);
+                circle.setFillColor(Color.LTGRAY);
+            }
+        }
     }
 
     // React to acceleration and magnetometer readings
