@@ -14,7 +14,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Handler;
-import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -23,7 +22,6 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.util.SparseArray;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -47,13 +45,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class GameMapActivity extends FragmentActivity implements
         SensorEventListener, ConnectionCallbacks, OnConnectionFailedListener,
@@ -323,6 +318,10 @@ public class GameMapActivity extends FragmentActivity implements
         setMapStyle();
         setCameraBounds();
         placeWaypointMarkers();
+        // For debugging only
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true);
+        }
     }
 
     private void setMapStyle() {
@@ -455,9 +454,7 @@ public class GameMapActivity extends FragmentActivity implements
     }
 
     // TODO: call this function when stamp button is clicked
-    private void markWaypointAsVisited(Waypoint waypoint) {
-        mVisitedWaypoints.add(waypoint);
-        mVisitedTimestamps.add(new Date());
+    private void markWaypointAsVisitedOnMap(Waypoint waypoint) {
         // Change circle style
         for (Circle circle : mWaypointCircles) {
             if (circle.getTag().equals(waypoint.getName())) {
@@ -581,7 +578,26 @@ public class GameMapActivity extends FragmentActivity implements
 
     @Override
     public void onWaypointStamped(Waypoint waypoint) {
-
+        mVisitedWaypoints.add(waypoint);
+        mVisitedTimestamps.add(new Date());
+        // Change waypoint's style on map
+        markWaypointAsVisitedOnMap(waypoint);
+        // Remove geofence from waypoint
+        for (int i=0; i < mGeofenceList.size(); i++) {
+            if (mGeofenceList.get(i).getRequestId().equals("FOS_"+gameCode+"_"+waypoint.getId())) {
+                mGeofenceList.remove(i);    // don't do this at home kids
+                break;
+            }
+        }
+        unregisterGeofences();
+        if (mGeofenceList.size() > 0) {
+            registerGeofences();
+        } else {
+            /*
+            TODO:
+            endGame();
+             */
+        }
     }
 
     private class GeofenceEventReceiver extends BroadcastReceiver {
