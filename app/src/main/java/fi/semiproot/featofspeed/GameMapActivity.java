@@ -14,6 +14,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Handler;
+import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -22,6 +23,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.util.SparseArray;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -61,7 +63,9 @@ public class GameMapActivity extends FragmentActivity implements
     private static final int MY_PERMISSIONS_REQUEST_FINE_LOCATION = 8888;
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requesting-location-updates-key";
     private static final String LOCATION_KEY = "location-key";
+    private static final String WAYPOINTS_KEY = "all-waypoints";
     private static final String VISITED_WAYPOINTS_KEY = "visited-waypoints";
+    private static final String VISITED_TIMESTAMPS_KEY = "visit-timestamps";
 
     // Dummy data for testing
     //Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
@@ -82,7 +86,7 @@ public class GameMapActivity extends FragmentActivity implements
     private boolean mRequestingLocationUpdates = false;
 
     // Geofence fields
-    private final int GEOFENCE_RADIUS = 100;             // Meters
+    private final int GEOFENCE_RADIUS = 100;            // Meters
     private final int GEOFENCE_EXPIRATION = 3600000;    // Hour in ms
     protected ArrayList<Geofence> mGeofenceList;
     private PendingIntent mGeofencePendingIntent;
@@ -95,7 +99,8 @@ public class GameMapActivity extends FragmentActivity implements
     private LatLng gameStartLatLng;
     //private ArrayList<Waypoint> mAllWaypoints = new ArrayList<>(DUMMY_WAYPOINTS);
     private ArrayList<Waypoint> mAllWaypoints;
-    private HashMap<Integer, Date> mVisitedWaypoints;
+    private ArrayList<Waypoint> mVisitedWaypoints;
+    private ArrayList<Date> mVisitedTimestamps;
 
     // Dialog alert
     DialogFragment stampDialog;
@@ -149,9 +154,6 @@ public class GameMapActivity extends FragmentActivity implements
             gameStartLatLng = DUMMY_GAME_START_LATLNG;
         }
 
-        updateValuesFromBundle(savedInstanceState);
-
-
         // Location request specifies how often the app gets a location from google services
         mLocationRequest = createLocationRequest(5000, 2000);
 
@@ -161,7 +163,11 @@ public class GameMapActivity extends FragmentActivity implements
         mapFragment.getMapAsync(this);
 
         mGeofenceList = new ArrayList<Geofence>();
-        mVisitedWaypoints = new HashMap<Integer, Date>();
+        mVisitedWaypoints = new ArrayList<Waypoint>();
+        mVisitedTimestamps = new ArrayList<Date>();
+
+        updateValuesFromBundle(savedInstanceState);
+
         populateGeofenceList(mAllWaypoints);
 
         // Fetch relevant sensor instances
@@ -199,6 +205,15 @@ public class GameMapActivity extends FragmentActivity implements
             }
             if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
                 mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
+            }
+            if (savedInstanceState.keySet().contains(WAYPOINTS_KEY)) {
+                mAllWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(WAYPOINTS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(VISITED_WAYPOINTS_KEY)) {
+                mVisitedWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(VISITED_WAYPOINTS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(VISITED_TIMESTAMPS_KEY)) {
+                mVisitedTimestamps = (ArrayList<Date>) savedInstanceState.getSerializable(VISITED_TIMESTAMPS_KEY);
             }
         }
     }
@@ -436,7 +451,8 @@ public class GameMapActivity extends FragmentActivity implements
 
     // TODO: call this function when stamp button is clicked
     private void markWaypointAsVisited(Waypoint waypoint) {
-        mVisitedWaypoints.put(waypoint.getId(), new Date());
+        mVisitedWaypoints.add(waypoint);
+        mVisitedTimestamps.add(new Date());
     }
 
     // React to acceleration and magnetometer readings
@@ -532,6 +548,9 @@ public class GameMapActivity extends FragmentActivity implements
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
         savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
+        savedInstanceState.putSerializable(WAYPOINTS_KEY, mAllWaypoints);
+        savedInstanceState.putSerializable(VISITED_WAYPOINTS_KEY, mVisitedWaypoints);
+        savedInstanceState.putSerializable(VISITED_TIMESTAMPS_KEY, mVisitedTimestamps);
         super.onSaveInstanceState(savedInstanceState);
     }
 
