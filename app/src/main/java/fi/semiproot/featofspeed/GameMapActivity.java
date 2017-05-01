@@ -44,6 +44,7 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -136,7 +137,7 @@ public class GameMapActivity extends FragmentActivity implements
         setContentView(R.layout.activity_game_map);
 
         // Get an instance of GoogleAPIClient.
-        mGoogleApiClient = getGoogleApiClient();
+        getGoogleApiClient();
 
         // Get game data from LoadActivity's intent
         Bundle bundle = getIntent().getExtras();
@@ -240,19 +241,22 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
-    private synchronized GoogleApiClient getGoogleApiClient() {
+    private synchronized void getGoogleApiClient() {
         if (mGoogleApiClient == null) {
-            return new GoogleApiClient.Builder(this)
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
                     .addConnectionCallbacks(this)
                     .addOnConnectionFailedListener(this)
                     .addApi(LocationServices.API)
                     .build();
-        } else return mGoogleApiClient;
+        }
     }
 
     @Override
     protected void onStart() {
         Log.d(TAG, "onStart() was called");
+        if (mGoogleApiClient == null) {
+            getGoogleApiClient();
+        }
         mGoogleApiClient.connect();
         super.onStart();
     }
@@ -308,6 +312,9 @@ public class GameMapActivity extends FragmentActivity implements
 
     @Override
     protected void onStop() {
+        if (mGoogleApiClient == null) {
+            getGoogleApiClient();
+        }
         mGoogleApiClient.disconnect();
         super.onStop();
         // Stop updating compass
@@ -320,14 +327,21 @@ public class GameMapActivity extends FragmentActivity implements
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady() was called");
         mMap = googleMap;
-        centerCameraToPlayArea();
         setMapStyle();
         setCameraBounds();
         placeWaypointMarkers();
+        mMap.getUiSettings().setMapToolbarEnabled(false);
         // For debugging only
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
         }
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                centerCameraToPlayArea();
+            }
+        }, 1000);
     }
 
     private void setMapStyle() {
@@ -347,11 +361,12 @@ public class GameMapActivity extends FragmentActivity implements
     }
 
     private void centerCameraToPlayArea() {
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(gameStartLatLng, 13));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(15.1f), 3000, null);
     }
 
     private void setCameraBounds() {
         // magic constants for bounds
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(gameStartLatLng, 11.9f));
         float latDelta = 0.010f;
         float lngDelta = 0.03f;
         LatLng ne_corner = new LatLng(gameStartLatLng.latitude + latDelta, gameStartLatLng.longitude + lngDelta);
@@ -456,6 +471,11 @@ public class GameMapActivity extends FragmentActivity implements
                 .fillColor(Color.argb(127, 255, 64, 129)));
             circle.setTag(waypoint.getName());
             mWaypointCircles.add(circle);
+            mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(waypoint.getLat(), waypoint.getLng()))
+                .title(waypoint.getName())
+                .alpha(0)
+            );
         }
     }
 
@@ -574,7 +594,7 @@ public class GameMapActivity extends FragmentActivity implements
     @Override
     public void onResult(Status status) {
         if (status.isSuccess()) {
-            Toast.makeText(this, "Geofences succesfully modified", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "Geofences succesfully modified", Toast.LENGTH_SHORT).show();
         } else {
             // Get the status code for the error and log it using a user-friendly message.
             String errorMessage = GeofenceErrorMessages.getErrorString(this,
@@ -600,7 +620,7 @@ public class GameMapActivity extends FragmentActivity implements
         if (mGeofenceList.size() > 0) {
             registerGeofences();
         } else {
-            //  Game ended go to results.
+            // Game ended go to results.
 
             Intent intent = new Intent(GameMapActivity.this, ResultsActivity.class);
 
