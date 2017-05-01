@@ -139,6 +139,9 @@ public class GameMapActivity extends FragmentActivity implements
         // Get an instance of GoogleAPIClient.
         getGoogleApiClient();
 
+        // Fetch compass view instance from content
+        compassWidget = (CompassView) findViewById(R.id.compass);
+
         // Get game data from LoadActivity's intent
         Bundle bundle = getIntent().getExtras();
         if (bundle != null) {
@@ -146,6 +149,9 @@ public class GameMapActivity extends FragmentActivity implements
             gameStartLatLng = bundle.getParcelable("GAME_LAT_LNG");
             mAllWaypoints = (ArrayList<Waypoint>) bundle.getSerializable("waypoints");
             gameStartedTimestamp = (Date) bundle.getSerializable("date");
+
+            compassWidget.setPos(gameStartLatLng);
+            compassWidget.setWaypoints(mAllWaypoints);
         } else {
             Log.d(TAG, "Intent extras from LoadActivity are missing!!!");
         }
@@ -176,9 +182,6 @@ public class GameMapActivity extends FragmentActivity implements
         sManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-
-        // Fetch compass view instance from content
-        compassWidget = (CompassView) findViewById(R.id.compass);
 
         rotationMatrix = new float[9];
         orientation = new float[3];
@@ -574,6 +577,7 @@ public class GameMapActivity extends FragmentActivity implements
     public void onLocationChanged(Location location) {
         Log.d(TAG, "onLocationChanged() was called");
         mCurrentLocation = location;
+        compassWidget.setPos(new LatLng(location.getLatitude(), location.getLongitude()));
         // UpdateUI();
         Log.d(TAG, "onLocationChanged: " + location.getLatitude() + "; " + location.getLongitude());
     }
@@ -668,10 +672,8 @@ public class GameMapActivity extends FragmentActivity implements
                 }
 
                 // Close stamp dialog if it visible and not null
-                if (stampDialog != null) {
-                    if (stampDialog.getDialog().isShowing()) {
-                        stampDialog.getDialog().dismiss();
-                    }
+                if (stampDialog != null && stampDialog.getDialog() != null && stampDialog.getDialog().isShowing()) {
+                    stampDialog.getDialog().dismiss();
                 }
 
                 // Do something with waypoints here

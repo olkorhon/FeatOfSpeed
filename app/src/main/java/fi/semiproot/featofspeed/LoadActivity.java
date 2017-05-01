@@ -1,10 +1,8 @@
 package fi.semiproot.featofspeed;
 
-import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -137,71 +135,73 @@ public class LoadActivity extends AppCompatActivity {
         JsonObjectRequest req = new JsonObjectRequest(Request.Method.POST, url, reqObject, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-            Log.d(TAG, "Received: " + response.toString());
+                Log.d(TAG, "Received: " + response.toString());
 
-            try {
-
-                JSONArray errors = response.getJSONArray("errors");
-                if (errors != null && errors.length() > 0) {
-                    Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
-                    LoadActivity.this.finish();
-                    return;
-                }
-
-                // Get game object from successful request
-                JSONObject game = response.getJSONObject("game");
-
-                // Fetch general information about game
-                code = game.getString("game_id");
-                gameState = game.getInt("current_state");
-
-                if (!game.isNull("start_time")) {
-                    ISODate = ISO_FORMAT.parse(game.getString("start_time"));
-                }
-
-                // Fetch and list current players
-                playersList.clear();
-                JSONArray players = game.getJSONArray("players");
-                for (int i = 0; i < players.length(); i++) {
-                    // Fetch player object from JSONArray
-                    JSONObject player = players.getJSONObject(i);
-
-                    // If this player is currently playing add it to the player list
-                    if (player.getBoolean("currently_playing")) {
-                        playersList.add(new Player(
-                                player.getString("user_id"),
-                                player.getString("nickname")));
+                try {
+                    JSONArray errors = response.getJSONArray("errors");
+                    if (errors != null && errors.length() > 0) {
+                        Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
+                        LoadActivity.this.finish();
+                        return;
                     }
-                }
 
-                // Process current gameState
-                switch (gameState) {
-                    case 0:
-                    case 1:
-                        // Game is either just started and/or still in the lobby
-                        goLobby();
-                        break;
-                    case 3:
-                        // Game has already started, join directly
-                        JSONArray waypoints = game.getJSONArray("waypoints");
-                        for (int i = 0; i < waypoints.length(); i++) {
-                            Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
-                            if (waypoint != null)
-                                waypointList.add(waypoint);
+                    // Get game object from successful request
+                    JSONObject game = response.getJSONObject("game");
+
+                    // Fetch general information about game
+                    code = game.getString("game_id");
+                    gameState = game.getInt("current_state");
+
+                    if (!game.isNull("start_time")) {
+                        ISODate = ISO_FORMAT.parse(game.getString("start_time"));
+                    }
+
+                    // Fetch and list current players
+                    playersList.clear();
+                    JSONArray players = game.getJSONArray("players");
+                    for (int i = 0; i < players.length(); i++) {
+                        // Fetch player object from JSONArray
+                        JSONObject player = players.getJSONObject(i);
+
+                        // If this player is currently playing add it to the player list
+                        if (player.getBoolean("currently_playing")) {
+                            playersList.add(new Player(
+                                    player.getString("user_id"),
+                                    player.getString("nickname")));
                         }
+                    }
 
-                        Log.d(TAG, "Waypoints: " + waypointList.toString());
-                        goGame();
-                        break;
-                    default:
-                        Log.d(TAG, "GameState is not valid! Is: " + gameState);
-                        break;
+                    // Process current gameState
+                    switch (gameState) {
+                        case 0:
+                        case 1:
+                            // Game is either just started and/or still in the lobby
+                            goLobby();
+                            break;
+                        case 3:
+                            // Game has already started, join directly
+                            JSONArray waypoints = game.getJSONArray("waypoints");
+                            for (int i = 0; i < waypoints.length(); i++) {
+                                Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
+                                if (waypoint != null)
+                                    waypointList.add(waypoint);
+                            }
+
+                            Log.d(TAG, "Waypoints: " + waypointList.toString());
+                            goGame();
+                            break;
+                        default:
+                            Log.d(TAG, "GameState is not valid! Is: " + gameState);
+                            break;
+                    }
+                } catch (Exception ex) {
+                    Log.e(TAG, "An error happened while processing game response.");
+                    Log.e(TAG, ex.getMessage());
+
+                    Toast.makeText(LoadActivity.this, "Could not find any waypoints", Toast.LENGTH_LONG).show();
+
+                    LoadActivity.this.finish();
                 }
-            } catch (Exception ex) {
-                Log.e(TAG, "An error happened while processing game response.");
-                Log.e(TAG, ex.getMessage());
-                LoadActivity.this.finish();
-            }
             }
         }, new Response.ErrorListener() {
             @Override
@@ -212,23 +212,20 @@ public class LoadActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 } else if (error instanceof AuthFailureError) {
                     Log.d(TAG, "AuthFailureError");
-                } else if (error instanceof ServerError) {
-                    Log.d(TAG, "ServerError");
-                } else if (error instanceof NetworkError) {
+                } else if (error instanceof ServerError || error instanceof NetworkError) {
                     NetworkResponse res = error.networkResponse;
                     if (res != null) {
                         Log.e(TAG, "Error status: " + res.statusCode);
                         try {
                             Log.e(TAG, "Error: " + new String(res.data, "UTF-8"));
                         } catch (UnsupportedEncodingException ex) {
-                            Log.e(TAG, "Unsupported Encoding: " + ex.getMessage()); //TODO add exception handling }
+                            Log.e(TAG, "Unsupported Encoding: " + ex.getMessage());
                         }
                     } else if (error instanceof ParseError) {
                         Log.e(TAG, "ParseError happened!");
                     }
-
-                    LoadActivity.this.finish();
                 }
+                LoadActivity.this.finish();
             }
         });
 

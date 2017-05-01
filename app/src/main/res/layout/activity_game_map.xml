@@ -28,7 +28,7 @@
         android:paddingRight="6dp"
         android:paddingTop="16dp"
         app:BlobColor="#b4296e8e"
-        app:MaxAngle="180"
+        app:MaxAngle="90"
         app:MaxBlobHeight="80"
         app:MaxBlobWidth="30"
         app:MinBlobHeight="20"

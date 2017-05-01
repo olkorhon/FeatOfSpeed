@@ -6,14 +6,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.location.Location;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.maps.android.SphericalUtil;
 
-import java.util.ArrayList;
+
 import java.util.List;
 
 /**
@@ -21,6 +22,10 @@ import java.util.List;
  */
 public class CompassView extends View
 {
+    private static String TAG = "CompassView";
+    private static float MAX_DISTANCE = 1000;
+    private static float MIN_DISTANCE = 100;
+
     // Text
     private static String[] directions;
 
@@ -58,6 +63,7 @@ public class CompassView extends View
     private float max_distance = 90;
     private float angleReal;
     private float angleVisible;
+    private float[] target_sizes;
     private float[] target_angles;
 
     private LatLng pos;
@@ -93,6 +99,7 @@ public class CompassView extends View
 
         // Test data
         angleVisible = 80;
+        target_sizes = new float[] {1f, 1f, 1f};
         target_angles = new float[] {20f, 180f, 270f};
 
         directions = new String[] {
@@ -150,23 +157,42 @@ public class CompassView extends View
     public void setPos(LatLng pos) {
         this.pos = pos;
 
-        if (waypoints != null)
-            calculateAngles();
+        if (waypoints != null) {
+            calculateAnglesAndSizes();
+        }
     }
 
     public void setWaypoints(List<Waypoint> waypoints) {
         this.waypoints = waypoints;
 
-        if (pos != null)
-            calculateAngles();
+        if (pos != null) {
+            calculateAnglesAndSizes();
+        }
     }
 
-    private void calculateAngles() {
-        if (this.target_angles.length != this.waypoints.size())
+    private void calculateAnglesAndSizes() {
+        if (this.target_angles.length != this.waypoints.size()) {
             this.target_angles = new float[this.waypoints.size()];
+            this.target_sizes = new float[this.waypoints.size()];
+        }
 
         for (int i = 0; i < waypoints.size(); i++) {
-            this.target_angles[i] = (float)angleFromCoordinate(this.pos.latitude, this.pos.longitude, this.waypoints.get(i).getLat(), this.waypoints.get(i).getLng());
+            LatLng target = new LatLng(this.waypoints.get(i).getLat(), this.waypoints.get(i).getLng());
+            this.target_angles[i] = (float)SphericalUtil.computeHeading(this.pos, target);
+
+            // Calc size
+            this.target_sizes[i] = (float)SphericalUtil.computeDistanceBetween(this.pos, target);
+            if (this.target_sizes[i] > MAX_DISTANCE)
+                this.target_sizes[i] = 0.0f;
+            else if (this.target_sizes[i] >= MIN_DISTANCE) {
+                this.target_sizes[i] = 1.0f - ((this.target_sizes[i] - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE));
+            }
+            else if (this.target_sizes[i] >= 0) {
+                this.target_sizes[i] = 1.0f;
+            }
+            else {
+                Log.e(TAG, "Cannot process negative distances");
+            }
         }
     }
 
@@ -188,7 +214,7 @@ public class CompassView extends View
 
     public void refresh() {
         float difference = angularDistance(angleVisible, angleReal);
-        angleVisible = angleReal;//0.7f * angleVisible + 0.3f * (angleVisible + difference);
+        angleVisible = 0.7f * angleVisible + 0.3f * (angleVisible + difference);
         invalidate();
     }
 
@@ -266,8 +292,8 @@ public class CompassView extends View
 
             drawn += 1;
 
-            float blobWidth = sinLerp(blobMaxHorizontal, blobMinHorizontal, Math.abs(dist / max_distance));
-            float blobHeight = sinLerp(blobMaxVertical, blobMinVertical, Math.abs(dist / max_distance));
+            float blobWidth = sinLerp(blobMinHorizontal, blobMaxHorizontal, target_sizes[i]);
+            float blobHeight = sinLerp(blobMinVertical, blobMaxVertical, target_sizes[i]);
 
             canvas.drawRect(
                     middle_horizontal - blobWidth + (dist / max_distance) * (contentWidth / 2),
