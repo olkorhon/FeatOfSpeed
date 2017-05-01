@@ -1,10 +1,8 @@
 package fi.semiproot.featofspeed;
 
-import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -140,7 +138,6 @@ public class LoadActivity extends AppCompatActivity {
             Log.d(TAG, "Received: " + response.toString());
 
             try {
-
                 JSONArray errors = response.getJSONArray("errors");
                 if (errors != null && errors.length() > 0) {
                     Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
@@ -212,23 +209,20 @@ public class LoadActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 } else if (error instanceof AuthFailureError) {
                     Log.d(TAG, "AuthFailureError");
-                } else if (error instanceof ServerError) {
-                    Log.d(TAG, "ServerError");
-                } else if (error instanceof NetworkError) {
+                } else if (error instanceof ServerError || error instanceof NetworkError) {
                     NetworkResponse res = error.networkResponse;
                     if (res != null) {
                         Log.e(TAG, "Error status: " + res.statusCode);
                         try {
                             Log.e(TAG, "Error: " + new String(res.data, "UTF-8"));
                         } catch (UnsupportedEncodingException ex) {
-                            Log.e(TAG, "Unsupported Encoding: " + ex.getMessage()); //TODO add exception handling }
+                            Log.e(TAG, "Unsupported Encoding: " + ex.getMessage());
                         }
                     } else if (error instanceof ParseError) {
                         Log.e(TAG, "ParseError happened!");
                     }
-
-                    LoadActivity.this.finish();
                 }
+                LoadActivity.this.finish();
             }
         });
 

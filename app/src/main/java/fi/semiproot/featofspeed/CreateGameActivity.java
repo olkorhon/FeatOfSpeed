@@ -36,9 +36,9 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
     private static final String TAG = CreateGameActivity.class.getSimpleName();
 
     static final String[] GAME_DESCRIPTIONS = {
-            "Maximum of 5 waypoints in 250m radius.",
-            "Maximum of 6 waypoints in 1km radius.",
-            "Maximum of 6 waypoints in 2,5km radius."
+            "Maximum of 4 waypoints in 800m radius.",
+            "Maximum of 6 waypoints in 1200m radius.",
+            "Maximum of 8 waypoints in 1600m radius."
     };
 
     Button createButton;
@@ -90,7 +90,7 @@ public class CreateGameActivity extends AppCompatActivity implements GoogleApiCl
         // Setup game description text:
         description = (TextView)findViewById(R.id.descriptionText);
         description.setText(GAME_DESCRIPTIONS[1]);
-        selectedGameSize = "small";
+        selectedGameSize = "medium";
     }
 
     private void updateLatestLocation() {
