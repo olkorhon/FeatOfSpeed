@@ -62,6 +62,7 @@ public class GameMapActivity extends FragmentActivity implements
     private static final String WAYPOINTS_KEY = "all-waypoints";
     private static final String VISITED_WAYPOINTS_KEY = "visited-waypoints";
     private static final String VISITED_TIMESTAMPS_KEY = "visit-timestamps";
+    private static final String GAME_START_TIMESTAMP = "date";
 
     // Dummy data for testing
     //Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
@@ -98,6 +99,7 @@ public class GameMapActivity extends FragmentActivity implements
     private ArrayList<Waypoint> mVisitedWaypoints;
     private ArrayList<Date> mVisitedTimestamps;
     private ArrayList<Circle> mWaypointCircles;
+    private Date gameStartedTimestamp;
 
     // Dialog alert
     DialogFragment stampDialog;
@@ -142,6 +144,7 @@ public class GameMapActivity extends FragmentActivity implements
             gameCode = bundle.getString("code", "0000");
             gameStartLatLng = bundle.getParcelable("GAME_LAT_LNG");
             mAllWaypoints = (ArrayList<Waypoint>) bundle.getSerializable("waypoints");
+            gameStartedTimestamp = (Date) bundle.getSerializable("date");
         } else {
             Log.d(TAG, "Intent extras from LoadActivity are missing!!!");
         }
@@ -212,6 +215,9 @@ public class GameMapActivity extends FragmentActivity implements
             }
             if (savedInstanceState.keySet().contains(VISITED_TIMESTAMPS_KEY)) {
                 mVisitedTimestamps = (ArrayList<Date>) savedInstanceState.getSerializable(VISITED_TIMESTAMPS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(GAME_START_TIMESTAMP)) {
+                gameStartedTimestamp = (Date) savedInstanceState.getSerializable(GAME_START_TIMESTAMP);
             }
         }
     }
@@ -560,6 +566,7 @@ public class GameMapActivity extends FragmentActivity implements
         savedInstanceState.putSerializable(WAYPOINTS_KEY, mAllWaypoints);
         savedInstanceState.putSerializable(VISITED_WAYPOINTS_KEY, mVisitedWaypoints);
         savedInstanceState.putSerializable(VISITED_TIMESTAMPS_KEY, mVisitedTimestamps);
+        savedInstanceState.putSerializable(GAME_START_TIMESTAMP, gameStartedTimestamp);
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -593,10 +600,19 @@ public class GameMapActivity extends FragmentActivity implements
         if (mGeofenceList.size() > 0) {
             registerGeofences();
         } else {
-            /*
-            TODO:
-            endGame();
-             */
+            //  Game ended go to results.
+
+            Intent intent = new Intent(GameMapActivity.this, ResultsActivity.class);
+
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("game_start_date", this.gameStartedTimestamp);
+            bundle.putSerializable("waypoints", this.mAllWaypoints);
+            bundle.putSerializable("visited_waypoints", this.mVisitedWaypoints);
+            bundle.putSerializable("visited_timestamps", this.mVisitedTimestamps);
+
+            intent.putExtras(bundle);
+            startActivity(intent);
+            GameMapActivity.this.finish();
         }
     }
 

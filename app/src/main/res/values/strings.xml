@@ -25,6 +25,8 @@
     <string name="West">W</string>
     <string name="punch_text">Mark as visited.</string>
     <string name="punch">Mark</string>
+    <string name="visited_waypoints">Visited waypoints:</string>
+    <string name="back_to_main_menu">Back to main menu</string>
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
