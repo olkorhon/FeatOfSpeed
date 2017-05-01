@@ -135,70 +135,73 @@ public class LoadActivity extends AppCompatActivity {
         JsonObjectRequest req = new JsonObjectRequest(Request.Method.POST, url, reqObject, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-            Log.d(TAG, "Received: " + response.toString());
+                Log.d(TAG, "Received: " + response.toString());
 
-            try {
-                JSONArray errors = response.getJSONArray("errors");
-                if (errors != null && errors.length() > 0) {
-                    Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
-                    LoadActivity.this.finish();
-                    return;
-                }
-
-                // Get game object from successful request
-                JSONObject game = response.getJSONObject("game");
-
-                // Fetch general information about game
-                code = game.getString("game_id");
-                gameState = game.getInt("current_state");
-
-                if (!game.isNull("start_time")) {
-                    ISODate = ISO_FORMAT.parse(game.getString("start_time"));
-                }
-
-                // Fetch and list current players
-                playersList.clear();
-                JSONArray players = game.getJSONArray("players");
-                for (int i = 0; i < players.length(); i++) {
-                    // Fetch player object from JSONArray
-                    JSONObject player = players.getJSONObject(i);
-
-                    // If this player is currently playing add it to the player list
-                    if (player.getBoolean("currently_playing")) {
-                        playersList.add(new Player(
-                                player.getString("user_id"),
-                                player.getString("nickname")));
+                try {
+                    JSONArray errors = response.getJSONArray("errors");
+                    if (errors != null && errors.length() > 0) {
+                        Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
+                        LoadActivity.this.finish();
+                        return;
                     }
-                }
 
-                // Process current gameState
-                switch (gameState) {
-                    case 0:
-                    case 1:
-                        // Game is either just started and/or still in the lobby
-                        goLobby();
-                        break;
-                    case 3:
-                        // Game has already started, join directly
-                        JSONArray waypoints = game.getJSONArray("waypoints");
-                        for (int i = 0; i < waypoints.length(); i++) {
-                            Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
-                            if (waypoint != null)
-                                waypointList.add(waypoint);
+                    // Get game object from successful request
+                    JSONObject game = response.getJSONObject("game");
+
+                    // Fetch general information about game
+                    code = game.getString("game_id");
+                    gameState = game.getInt("current_state");
+
+                    if (!game.isNull("start_time")) {
+                        ISODate = ISO_FORMAT.parse(game.getString("start_time"));
+                    }
+
+                    // Fetch and list current players
+                    playersList.clear();
+                    JSONArray players = game.getJSONArray("players");
+                    for (int i = 0; i < players.length(); i++) {
+                        // Fetch player object from JSONArray
+                        JSONObject player = players.getJSONObject(i);
+
+                        // If this player is currently playing add it to the player list
+                        if (player.getBoolean("currently_playing")) {
+                            playersList.add(new Player(
+                                    player.getString("user_id"),
+                                    player.getString("nickname")));
                         }
+                    }
 
-                        Log.d(TAG, "Waypoints: " + waypointList.toString());
-                        goGame();
-                        break;
-                    default:
-                        Log.d(TAG, "GameState is not valid! Is: " + gameState);
-                        break;
+                    // Process current gameState
+                    switch (gameState) {
+                        case 0:
+                        case 1:
+                            // Game is either just started and/or still in the lobby
+                            goLobby();
+                            break;
+                        case 3:
+                            // Game has already started, join directly
+                            JSONArray waypoints = game.getJSONArray("waypoints");
+                            for (int i = 0; i < waypoints.length(); i++) {
+                                Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
+                                if (waypoint != null)
+                                    waypointList.add(waypoint);
+                            }
+
+                            Log.d(TAG, "Waypoints: " + waypointList.toString());
+                            goGame();
+                            break;
+                        default:
+                            Log.d(TAG, "GameState is not valid! Is: " + gameState);
+                            break;
+                    }
+                } catch (Exception ex) {
+                    Log.e(TAG, "An error happened while processing game response.");
+                    Log.e(TAG, ex.getMessage());
+
+                    Toast.makeText(LoadActivity.this, "Could not find any waypoints", Toast.LENGTH_LONG).show();
+
+                    LoadActivity.this.finish();
                 }
-            } catch (Exception ex) {
-                Log.e(TAG, "An error happened while processing game response.");
-                Log.e(TAG, ex.getMessage());
-                LoadActivity.this.finish();
-            }
             }
         }, new Response.ErrorListener() {
             @Override
