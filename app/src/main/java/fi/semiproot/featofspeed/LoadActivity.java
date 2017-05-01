@@ -29,19 +29,26 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class LoadActivity extends AppCompatActivity {
-
+    private static DateFormat ISO_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
     private static final String TAG = LoadActivity.class.getSimpleName();
 
     private String from;
     // Game data:
     private String code;
+    private int gameState;
+
     private LatLng gameLatLng;
     private String gameSize;
     private ArrayList<Player> playersList;
     private ArrayList<Waypoint> waypointList;
+    private Date ISODate;
 
     private FirebaseAuth mAuth;
     private SharedPreferences prefs;
@@ -68,6 +75,8 @@ public class LoadActivity extends AppCompatActivity {
 
         playersList = new ArrayList<>();
         waypointList = new ArrayList<>();
+
+        ISODate = null;
     }
 
     @Override
@@ -81,6 +90,7 @@ public class LoadActivity extends AppCompatActivity {
             case "CreateGameActivity":
                 url = "https://us-central1-featofspeed.cloudfunctions.net/createGame";
                 try {
+                    // Construct create game request
                     JSONObject location = new JSONObject();
                     location.put("latitude", gameLatLng.latitude);
                     location.put("longitude", gameLatLng.longitude);
@@ -97,17 +107,21 @@ public class LoadActivity extends AppCompatActivity {
                     reqObject.put("host", host);
 
                 } catch (JSONException ex) {
+                    Log.e(TAG, "JSONException: " + ex.getMessage());
                 }
                 break;
             case "JoinGameActivity":
                 url = "https://us-central1-featofspeed.cloudfunctions.net/joinGame?game_id=" + code;
                 try {
+                    // Construct Join activity request
                     JSONObject player = new JSONObject();
                     player.put("user_id", mAuth.getCurrentUser().getUid());
                     player.put("nickname", prefs.getString("nickname", "Anonymous"));
 
+
                     reqObject.put("player", player);
                 } catch (JSONException ex) {
+                    Log.e(TAG, "JSONException: " + ex.getMessage());
                 }
                 break;
             case "LobbyActivity":
@@ -118,56 +132,57 @@ public class LoadActivity extends AppCompatActivity {
                 break;
         }
 
-        Log.d(TAG, "URL: " + url);
-
+        // Construct a request that will be sent to backend functions
+        Log.d(TAG, "Creating request to URL: " + url);
         JsonObjectRequest req = new JsonObjectRequest(Request.Method.POST, url, reqObject, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                Log.d(TAG, response.toString());
+            Log.d(TAG, "Received: " + response.toString());
 
-                JSONObject game;
+            try {
 
-                try {
-                    JSONArray errors = response.getJSONArray("errors");
-                    if (errors != null && errors.length() > 0) {
-                        Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
-                        LoadActivity.this.finish();
-                    } else {
-                        game = response.getJSONObject("game");
-                        code = String.valueOf(game.getInt("game_id"));
-                        int max = 4 - code.length();
-                        for (int i = 0; i < max; i++) {
-                            code = "0" + code;
-                        }
-                        Log.d(TAG, "GameCode: " + code);
-
-                        JSONArray players = game.getJSONArray("players");
-
-                        for (int i = 0; i < players.length(); i++) {
-                            JSONObject player = players.getJSONObject(i);
-
-                            String userId = player.getString("user_id");
-
-                            if (player.getBoolean("currently_playing")) {
-                                playersList.add(new Player(
-                                        userId,
-                                        player.getString("nickname")));
-                            }
-                        }
-
-                    }
-                } catch (Exception ex) {
-                    Log.d(TAG, "An error when processing response.");
+                JSONArray errors = response.getJSONArray("errors");
+                if (errors != null && errors.length() > 0) {
+                    Toast.makeText(LoadActivity.this, errors.getString(0), Toast.LENGTH_SHORT).show();
                     LoadActivity.this.finish();
+                    return;
                 }
 
-                try {
-                    game = response.getJSONObject("game");
+                // Get game object from successful request
+                JSONObject game = response.getJSONObject("game");
 
-                    int gameState = game.getInt("current_state");
+                // Fetch general information about game
+                code = game.getString("game_id");
+                gameState = game.getInt("current_state");
 
-                    if (gameState == 3) {
+                if (!game.isNull("start_time")) {
+                    ISODate = ISO_FORMAT.parse(game.getString("start_time"));
+                }
 
+                // Fetch and list current players
+                playersList.clear();
+                JSONArray players = game.getJSONArray("players");
+                for (int i = 0; i < players.length(); i++) {
+                    // Fetch player object from JSONArray
+                    JSONObject player = players.getJSONObject(i);
+
+                    // If this player is currently playing add it to the player list
+                    if (player.getBoolean("currently_playing")) {
+                        playersList.add(new Player(
+                                player.getString("user_id"),
+                                player.getString("nickname")));
+                    }
+                }
+
+                // Process current gameState
+                switch (gameState) {
+                    case 0:
+                    case 1:
+                        // Game is either just started and/or still in the lobby
+                        goLobby();
+                        break;
+                    case 3:
+                        // Game has already started, join directly
                         JSONArray waypoints = game.getJSONArray("waypoints");
                         for (int i = 0; i < waypoints.length(); i++) {
                             Waypoint waypoint = Waypoint.fromJSONObject(waypoints.getJSONObject(i));
@@ -177,19 +192,20 @@ public class LoadActivity extends AppCompatActivity {
 
                         Log.d(TAG, "Waypoints: " + waypointList.toString());
                         goGame();
-                    } else if (gameState == 0 || gameState == 1) {
-                        goLobby();
-                    } else {
+                        break;
+                    default:
                         Log.d(TAG, "GameState is not valid! Is: " + gameState);
-                    }
-                } catch (Exception ex) {
-                    Log.d(TAG, "Error happened when getting gameState!");
+                        break;
                 }
+            } catch (Exception ex) {
+                Log.e(TAG, "An error happened while processing game response.");
+                Log.e(TAG, ex.getMessage());
+                LoadActivity.this.finish();
+            }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-
                 if (error instanceof TimeoutError || error instanceof NoConnectionError) {
                     Toast.makeText(getApplicationContext(),
                             "Connection timed out!",
@@ -201,21 +217,22 @@ public class LoadActivity extends AppCompatActivity {
                 } else if (error instanceof NetworkError) {
                     NetworkResponse res = error.networkResponse;
                     if (res != null) {
-                        Log.d(TAG, "Error status: " + res.statusCode);
+                        Log.e(TAG, "Error status: " + res.statusCode);
                         try {
-                            Log.d(TAG, "Error: " + new String(res.data, "UTF-8"));
+                            Log.e(TAG, "Error: " + new String(res.data, "UTF-8"));
                         } catch (UnsupportedEncodingException ex) {
-
+                            Log.e(TAG, "Unsupported Encoding: " + ex.getMessage()); //TODO add exception handling }
                         }
+                    } else if (error instanceof ParseError) {
+                        Log.e(TAG, "ParseError happened!");
                     }
-                } else if (error instanceof ParseError) {
-                    Log.d(TAG, "ParseError happened!");
-                }
 
-                LoadActivity.this.finish();
+                    LoadActivity.this.finish();
+                }
             }
         });
 
+        // Add the created request to request queue
         HttpService.getInstance(this).addToRequestQueue(req);
     }
 
@@ -223,9 +240,11 @@ public class LoadActivity extends AppCompatActivity {
         Intent intent = new Intent(LoadActivity.this, GameMapActivity.class);
 
         Bundle bundle = new Bundle();
+        bundle.putString("from", from);
         bundle.putString("code", code);
         bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
         bundle.putSerializable("waypoints", waypointList);
+        bundle.putSerializable("date", ISODate);
         intent.putExtras(bundle);
 
         startActivity(intent);
