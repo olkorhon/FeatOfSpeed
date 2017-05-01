@@ -24,6 +24,7 @@ public class ResultsActivity extends AppCompatActivity {
     private ArrayList<Waypoint> mAllWaypoints;
     private ArrayList<Waypoint> mVisitedWaypoints;
     private ArrayList<Date> mVisitedTimestamps;
+    private ArrayList<Waypoint> mWaypoints;
     private Date gameStartDate;
 
     private ResultsButtonListener resultsButtonListener;
@@ -70,6 +71,13 @@ public class ResultsActivity extends AppCompatActivity {
         TextView gameTimestampMSTextView = (TextView) findViewById(R.id.gameTimestampMSTextView);
         gameTimestampMSTextView.setText("," + String.format("%02d", diffinMillisecs));
 
+        mWaypoints = (ArrayList<Waypoint>)mVisitedWaypoints.clone();
+        for (Waypoint w : this.mAllWaypoints) {
+            if (!this.mVisitedWaypoints.contains(w)) {
+                mWaypoints.add(w);
+            }
+        }
+
         waypointsListView = (ListView) findViewById(R.id.waypointsListView);
         mAdapter = new WaypointsAdapter();
         waypointsListView.setAdapter(mAdapter);
@@ -87,12 +95,12 @@ public class ResultsActivity extends AppCompatActivity {
 
         @Override
         public int getCount() {
-            return ResultsActivity.this.mAllWaypoints.size();
+            return ResultsActivity.this.mWaypoints.size();
         }
 
         @Override
         public Object getItem(int position) {
-            return ResultsActivity.this.mAllWaypoints.get(position);
+            return ResultsActivity.this.mWaypoints.get(position);
         }
 
         @Override
@@ -121,14 +129,13 @@ public class ResultsActivity extends AppCompatActivity {
             TextView waypointTimestampWhole = (TextView) convertView.findViewById(R.id.waypointTimestampWhole);
             TextView waypointTimestamp = (TextView) convertView.findViewById(R.id.waypointTimestampTextView);
 
-            if (position <= ResultsActivity.this.mVisitedTimestamps.size() - 1) {
+            if (position < ResultsActivity.this.mVisitedTimestamps.size()) {
                 Date timestamp = ResultsActivity.this.mVisitedTimestamps.get(position);
                 long duration = timestamp.getTime() - ResultsActivity.this.gameStartDate.getTime();
                 long diffinMillisecs = (duration % 1000) / 100;
                 long diffInSeconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60;
                 long diffInMinutes = TimeUnit.MILLISECONDS.toMinutes(duration) % 60;
                 long diffInHours = TimeUnit.MILLISECONDS.toHours(duration);
-
 
                 waypointTimestampWhole.setText(
                         String.format("%02d", diffInHours) + ":" +

@@ -64,4 +64,9 @@ public class Waypoint implements Serializable {
             return null;
         }
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this.id == ((Waypoint)obj).getId();
+    }
 }
