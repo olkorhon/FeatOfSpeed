@@ -154,7 +154,7 @@ public class ResultsActivity extends AppCompatActivity {
                 diffInHours = TimeUnit.MILLISECONDS.toHours(duration);
 
                 waypointTimestamp.setText(
-                        String.format("%02d", diffInHours) + ":" +
+                        String.format("+%02d", diffInHours) + ":" +
                         String.format("%02d", diffInMinutes) + ":" +
                         String.format("%02d", diffInSeconds) + "," +
                         String.format("%02d", diffinMillisecs));
