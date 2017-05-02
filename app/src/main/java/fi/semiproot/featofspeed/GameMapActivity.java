@@ -108,12 +108,15 @@ public class GameMapActivity extends FragmentActivity implements
     // Compass functionality
     CompassView compassWidget;
 
+    private final int COMPASS_FILTER_SIZE = 8;
     Sensor accelometer;
     Sensor magnetometer;
     SensorManager sManager;
 
     float[] lastAcceleration;
     float[] lastMagnetometer;
+    ArrayList<float[]> accFilterWindow;
+    ArrayList<float[]> magFilterWindow;
     float[] rotationMatrix;
     float[] orientation;
 
@@ -183,6 +186,8 @@ public class GameMapActivity extends FragmentActivity implements
         accelometer = sManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+        accFilterWindow = new ArrayList<float[]>();
+        magFilterWindow = new ArrayList<float[]>();
         rotationMatrix = new float[9];
         orientation = new float[3];
 
@@ -291,8 +296,8 @@ public class GameMapActivity extends FragmentActivity implements
         } else if (magnetometer == null) {
             Toast.makeText(this, "Magnetometer not found!", Toast.LENGTH_SHORT).show();
         } else {
-            sManager.registerListener(this, accelometer, 60000);
-            sManager.registerListener(this, magnetometer, 60000);
+            sManager.registerListener(this, accelometer, 40000);
+            sManager.registerListener(this, magnetometer, 40000);
         }
     }
 
@@ -335,7 +340,8 @@ public class GameMapActivity extends FragmentActivity implements
         placeWaypointMarkers();
         mMap.getUiSettings().setMapToolbarEnabled(false);
         // For debugging only
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
         }
         final Handler handler = new Handler();
@@ -352,9 +358,7 @@ public class GameMapActivity extends FragmentActivity implements
             // Customise the styling of the base map using a JSON object defined
             // in a raw resource file.
             boolean success = mMap.setMapStyle(
-                    MapStyleOptions.loadRawResourceStyle(
-                            this, R.raw.style_json));
-
+                    MapStyleOptions.loadRawResourceStyle(this, R.raw.style_json));
             if (!success) {
                 Log.e(TAG, "Style parsing failed.");
             }
@@ -510,19 +514,58 @@ public class GameMapActivity extends FragmentActivity implements
         if (lastMagnetometer == null || lastAcceleration == null)
             return;
 
-        rotationResult = sManager.getRotationMatrix(rotationMatrix, null, lastAcceleration, lastMagnetometer);
+        accFilterWindow.add(lastAcceleration);
+        magFilterWindow.add(lastMagnetometer);
 
-        // rotation matrix can fail, no orientation when that happens
-        if (rotationResult) {
-            sManager.getOrientation(rotationMatrix, orientation);
+        if (accFilterWindow.size() == COMPASS_FILTER_SIZE) {
 
-            if (compassWidget != null) {
+            rotationResult = SensorManager.getRotationMatrix(rotationMatrix, null,
+                    getFilteredReading(accFilterWindow), getFilteredReading(magFilterWindow));
 
-                float angle = orientation[0] * (180.0f / (float) Math.PI);
-                //Log.d("Orientation", Float.toString(angle) + ":" + Float.toString(orientation[0]));
-                compassWidget.setActualRotation(angle);
+            // rotation matrix can fail, no orientation when that happens
+            if (rotationResult) {
+                sManager.getOrientation(rotationMatrix, orientation);
+
+                if (compassWidget != null) {
+
+                    float angle = orientation[0] * (180.0f / (float) Math.PI);
+                    //Log.d("Orientation", Float.toString(angle) + ":" + Float.toString(orientation[0]));
+                    compassWidget.setActualRotation(angle);
+                }
             }
+            accFilterWindow.clear();
+            magFilterWindow.clear();
         }
+    }
+
+    private float[] getFilteredReading(ArrayList<float[]> filterWindow) {
+        float[] x_values = new float[COMPASS_FILTER_SIZE];
+        float[] y_values = new float[COMPASS_FILTER_SIZE];
+        float[] z_values = new float[COMPASS_FILTER_SIZE];
+        float[] median = new float[3];
+
+        int i = 0;
+        for (float[] values : filterWindow) {
+            x_values[i] = values[0];
+            y_values[i] = values[1];
+            z_values[i] = values[2];
+            i++;
+        }
+        median[0] = calcMedian(x_values);
+        median[1] = calcMedian(y_values);
+        median[2] = calcMedian(z_values);
+
+        return median;
+    }
+
+    private float calcMedian(float[] numArray) {
+        Arrays.sort(numArray);
+        float median;
+        if (numArray.length % 2 == 0)
+            median = ((float)numArray[numArray.length/2] + (float)numArray[numArray.length/2 - 1])/2;
+        else
+            median = (float) numArray[numArray.length/2];
+        return median;
     }
 
     // Compass sensor cb
@@ -578,7 +621,6 @@ public class GameMapActivity extends FragmentActivity implements
         Log.d(TAG, "onLocationChanged() was called");
         mCurrentLocation = location;
         compassWidget.setPos(new LatLng(location.getLatitude(), location.getLongitude()));
-        // UpdateUI();
         Log.d(TAG, "onLocationChanged: " + location.getLatitude() + "; " + location.getLongitude());
     }
     // END Location callbacks
@@ -624,7 +666,7 @@ public class GameMapActivity extends FragmentActivity implements
         if (mGeofenceList.size() > 0) {
             registerGeofences();
         } else {
-            // Game ended go to results.
+            // Game ended, go to results.
 
             Intent intent = new Intent(GameMapActivity.this, ResultsActivity.class);
 
