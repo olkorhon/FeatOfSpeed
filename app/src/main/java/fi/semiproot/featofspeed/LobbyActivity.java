@@ -208,7 +208,8 @@ public class LobbyActivity extends AppCompatActivity {
                             Object time = dataSnapshot.child("start_time").getValue();
 
                             Date start_time = ISO_FORMAT.parse((String)time);
-                            bundle.putSerializable("start_time", start_time);
+                            Date actual_start_time = new Date((start_time.getTime() + 10800000L));
+                            bundle.putSerializable("start_time", actual_start_time);
                         }
                         catch(ParseException ex) {
                             Log.e(TAG, ex.getMessage());

@@ -47,6 +47,7 @@ public class LoadActivity extends AppCompatActivity {
     private ArrayList<Player> playersList;
     private ArrayList<Waypoint> waypointList;
     private Date ISODate;
+    private Date gameDate;
 
     private FirebaseAuth mAuth;
     private SharedPreferences prefs;
@@ -154,6 +155,8 @@ public class LoadActivity extends AppCompatActivity {
 
                     if (!game.isNull("start_time")) {
                         ISODate = ISO_FORMAT.parse(game.getString("start_time"));
+                        // Compensate for timezone offset
+                        gameDate = new Date((ISODate.getTime() + 10800000L));
                     }
 
                     // Fetch and list current players
@@ -241,7 +244,7 @@ public class LoadActivity extends AppCompatActivity {
         bundle.putString("code", code);
         bundle.putParcelable("GAME_LAT_LNG", gameLatLng);
         bundle.putSerializable("waypoints", waypointList);
-        bundle.putSerializable("date", ISODate);
+        bundle.putSerializable("date", gameDate);
         intent.putExtras(bundle);
 
         startActivity(intent);
