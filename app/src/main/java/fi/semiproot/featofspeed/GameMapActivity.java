@@ -65,17 +65,6 @@ public class GameMapActivity extends FragmentActivity implements
     private static final String VISITED_TIMESTAMPS_KEY = "visit-timestamps";
     private static final String GAME_START_TIMESTAMP = "date";
 
-    // Dummy data for testing
-    //Waypoint lipasto = new Waypoint(0, "Yliopisto", 65.0593177, 25.4662935);
-    //Waypoint tokmanni = new Waypoint(1, "Tokmanni", 65.0585888, 25.4777468);
-    //Waypoint merle = new Waypoint(2, "Parturi-kampaamo Merle", 65.0590863, 25.4782688);
-    //Waypoint kirjasto = new Waypoint(3, "Kaijonharjun kirjasto", 65.061139, 25.4809759);
-    //Waypoint mumina = new Waypoint(4, "Munina", 65.061129, 25.48029);
-
-    //private final List<Waypoint> DUMMY_WAYPOINTS = Arrays.asList(lipasto, tokmanni, merle, kirjasto, mumina);
-    private LatLng DUMMY_GAME_START_LATLNG = new LatLng(65.0613635, 25.4778139);
-    // END dummy data
-
     // Map and location fields
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -134,6 +123,8 @@ public class GameMapActivity extends FragmentActivity implements
         }
     };
 
+    // NOTE: you can minimize regions from the gutter
+    // region Lifecycle callbacks
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -160,16 +151,15 @@ public class GameMapActivity extends FragmentActivity implements
         }
 
         if (gameStartLatLng == null) {
-            Log.d(TAG, "Game start location missing, using dummy value...");
-            gameStartLatLng = DUMMY_GAME_START_LATLNG;
+            Log.d(TAG, "Game start location missing!");
         }
 
         // Location request specifies how often the app gets a location from google services
         mLocationRequest = createLocationRequest(5000, 2000);
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
+        // Calls onMapReady() when ready
         mapFragment.getMapAsync(this);
 
         mGeofenceList = new ArrayList<Geofence>();
@@ -194,85 +184,20 @@ public class GameMapActivity extends FragmentActivity implements
         compassUpdateHandler = new Handler();
     }
 
-    private void populateGeofenceList(List<Waypoint> waypointLocs) {
-        for (Waypoint waypoint : waypointLocs) {
-            String reqId = "FOS_" + gameCode + "_" + waypoint.getId();
-            mGeofenceList.add(new Geofence.Builder()
-                .setRequestId(reqId)
-                .setCircularRegion(waypoint.getLat(), waypoint.getLng(), GEOFENCE_RADIUS)
-                .setExpirationDuration(GEOFENCE_EXPIRATION)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
-            Log.d(TAG, "Geofence set for waypoint " + reqId);
-        }
-    }
-
-    private void updateValuesFromBundle(Bundle savedInstanceState) {
-        if (savedInstanceState != null) {
-            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
-                mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
-            }
-            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
-                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
-            }
-            if (savedInstanceState.keySet().contains(WAYPOINTS_KEY)) {
-                mAllWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(WAYPOINTS_KEY);
-            }
-            if (savedInstanceState.keySet().contains(VISITED_WAYPOINTS_KEY)) {
-                mVisitedWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(VISITED_WAYPOINTS_KEY);
-            }
-            if (savedInstanceState.keySet().contains(VISITED_TIMESTAMPS_KEY)) {
-                mVisitedTimestamps = (ArrayList<Date>) savedInstanceState.getSerializable(VISITED_TIMESTAMPS_KEY);
-            }
-            if (savedInstanceState.keySet().contains(GAME_START_TIMESTAMP)) {
-                gameStartedTimestamp = (Date) savedInstanceState.getSerializable(GAME_START_TIMESTAMP);
-            }
-        }
-    }
-
-    protected LocationRequest createLocationRequest(int interval, int fastestInterval) {
-        Log.d(TAG, "createLocationRequest() was called");
-        LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setInterval(interval);
-        locationRequest.setFastestInterval(fastestInterval);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        return locationRequest;
-    }
-
-    private void askLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                    MY_PERMISSIONS_REQUEST_FINE_LOCATION);
-        }
-    }
-
-    private synchronized void getGoogleApiClient() {
-        if (mGoogleApiClient == null) {
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
-    }
-
     @Override
     protected void onStart() {
+        super.onStart();
         Log.d(TAG, "onStart() was called");
         if (mGoogleApiClient == null) {
             getGoogleApiClient();
         }
         mGoogleApiClient.connect();
-        super.onStart();
     }
 
     @Override
     protected void onResume() {
-        Log.d(TAG, "onResume() was called");
         super.onResume();
+        Log.d(TAG, "onResume() was called");
         Log.d(TAG, "," + mRequestingLocationUpdates);
         if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
             startLocationUpdates();
@@ -304,33 +229,106 @@ public class GameMapActivity extends FragmentActivity implements
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Release and unregister listener
         if (mGeofenceEventReceiver != null) {
             unregisterReceiver(mGeofenceEventReceiver);
             mGeofenceEventReceiver = null;
         }
-
-        // Remove geofences
         unregisterGeofences();
-
         stopLocationUpdates();
-
     }
 
     @Override
     protected void onStop() {
-        if (mGoogleApiClient == null) {
-            getGoogleApiClient();
-        }
-        mGoogleApiClient.disconnect();
         super.onStop();
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.disconnect();
+        }
         // Stop updating compass
         compassUpdating = false;
         sManager.unregisterListener(this);
     }
+    // endregion
 
-    // Triggered when the map is ready to be used
+    private synchronized void getGoogleApiClient() {
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
+    }
+
+    protected LocationRequest createLocationRequest(int interval, int fastestInterval) {
+        Log.d(TAG, "createLocationRequest() was called");
+        LocationRequest locationRequest = new LocationRequest();
+        locationRequest.setInterval(interval);
+        locationRequest.setFastestInterval(fastestInterval);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        return locationRequest;
+    }
+
+    // region GoogleApiClient callbacks
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.d(TAG, "onConnected() was called");
+        askLocationPermission();
+
+        // Register geofences
+        registerGeofences();
+
+        // Start listening to location updates
+        if (!mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+
+    private void askLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_FINE_LOCATION);
+        }
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.d(TAG, "onConnectionSuspended() was called");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d(TAG, "onConnectionFailed() was called");
+    }
+    // endregion
+
+    // region Location callbacks
+    protected void startLocationUpdates() {
+        Log.d(TAG, "startLocationUpdates() was called");
+        mRequestingLocationUpdates = true;
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        }
+    }
+
+    protected void stopLocationUpdates() {
+        Log.d(TAG, "stopLocationUpdates() was called");
+        mRequestingLocationUpdates = false;
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.d(TAG, "onLocationChanged() was called");
+        mCurrentLocation = location;
+        compassWidget.setPos(new LatLng(location.getLatitude(), location.getLongitude()));
+        Log.d(TAG, "onLocationChanged: " + location.getLatitude() + "; " + location.getLongitude());
+    }
+    // endregion
+
+    // region Map functions
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady() was called");
@@ -382,6 +380,40 @@ public class GameMapActivity extends FragmentActivity implements
         mMap.setLatLngBoundsForCameraTarget(gameAreaBounds);
     }
 
+    private void placeWaypointMarkers() {
+        for (Waypoint waypoint : mAllWaypoints) {
+            Circle circle = mMap.addCircle(new CircleOptions()
+                    .center(new LatLng(waypoint.getLat(), waypoint.getLng()))
+                    .radius(GEOFENCE_RADIUS)
+                    .strokeWidth(8)
+                    .strokeColor(Color.argb(255, 63, 81, 181))
+                    .fillColor(Color.argb(127, 255, 64, 129)));
+            circle.setTag(waypoint.getName());
+            mWaypointCircles.add(circle);
+            mMap.addMarker(new MarkerOptions()
+                    .position(new LatLng(waypoint.getLat(), waypoint.getLng()))
+                    .title(waypoint.getName())
+                    .alpha(0)
+            );
+        }
+    }
+    // endregion
+
+    // region Geofence functions
+    private void populateGeofenceList(List<Waypoint> waypointLocs) {
+        for (Waypoint waypoint : waypointLocs) {
+            String reqId = "FOS_" + gameCode + "_" + waypoint.getId();
+            mGeofenceList.add(new Geofence.Builder()
+                .setRequestId(reqId)
+                .setCircularRegion(waypoint.getLat(), waypoint.getLng(), GEOFENCE_RADIUS)
+                .setExpirationDuration(GEOFENCE_EXPIRATION)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                        Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build());
+            Log.d(TAG, "Geofence set for waypoint " + reqId);
+        }
+    }
+
     private void registerGeofences() {
         if (!mGoogleApiClient.isConnected()) {
             Toast.makeText(this, "Not connected to google play, cannot register new geofences", Toast.LENGTH_SHORT).show();
@@ -426,6 +458,19 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
+    // Handle the result from adding geofences to the list of actually checked geofences
+    @Override
+    public void onResult(Status status) {
+        if (status.isSuccess()) {
+            //Toast.makeText(this, "Geofences succesfully modified", Toast.LENGTH_SHORT).show();
+        } else {
+            // Get the status code for the error and log it using a user-friendly message.
+            String errorMessage = GeofenceErrorMessages.getErrorString(this,
+                    status.getStatusCode());
+            Log.e(TAG, errorMessage);
+        }
+    }
+
     // Helper method to log a security exception raised by a service that needs ACCESS_FINE_LOCATION
     private void logSecurityException(SecurityException securityException) {
         Log.e(TAG, "Invalid location permission. " +
@@ -467,26 +512,96 @@ public class GameMapActivity extends FragmentActivity implements
         mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         return mGeofencePendingIntent;
     }
+    // endregion
 
-    private void placeWaypointMarkers() {
-        for (Waypoint waypoint : mAllWaypoints) {
-            Circle circle = mMap.addCircle(new CircleOptions()
-                .center(new LatLng(waypoint.getLat(), waypoint.getLng()))
-                .radius(GEOFENCE_RADIUS)
-                .strokeWidth(8)
-                .strokeColor(Color.argb(255, 63, 81, 181))
-                .fillColor(Color.argb(127, 255, 64, 129)));
-            circle.setTag(waypoint.getName());
-            mWaypointCircles.add(circle);
-            mMap.addMarker(new MarkerOptions()
-                .position(new LatLng(waypoint.getLat(), waypoint.getLng()))
-                .title(waypoint.getName())
-                .alpha(0)
-            );
+
+    private class GeofenceEventReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(GeofenceTransitionsIntentService.ENTERED_GEOFENCE)) {
+                Log.d(TAG, "Activity received Entered broadcast");
+
+                // Fetch and parse Waypoints from intent
+                Bundle extras = intent.getExtras();
+                ArrayList<String> ids = extras.getStringArrayList("ids");
+                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
+                for (int i = 0; i < ids.size(); i++) {
+                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
+                }
+
+                // Start dialog
+                stampDialog = StampWaypointFragment.getInstance(triggered_waypoints.get(0));
+                stampDialog.show(getSupportFragmentManager(), "stamp");
+
+            } else if (intent.getAction().equals(GeofenceTransitionsIntentService.EXITED_GEOFENCE)) {
+                Log.d(TAG, "Activity received Exited broadcast");
+
+                // Fetch and parse Waypoints from intent
+                Bundle extras = intent.getExtras();
+                ArrayList<String> ids = extras.getStringArrayList("ids");
+                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
+                for (int i = 0; i < ids.size(); i++) {
+                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
+                }
+
+                // Close stamp dialog if it visible and not null
+                if (stampDialog != null && stampDialog.getDialog() != null && stampDialog.getDialog().isShowing()) {
+                    stampDialog.getDialog().dismiss();
+                }
+
+            } else {
+                Log.e(TAG, "Activity received irrelevant broadcast, intent filter needs tuning");
+            }
+        }
+
+        @Nullable
+        private Waypoint getWaypointWithReguestId(String request_id) {
+            String[] request_parts = request_id.split("_");
+            int id = Integer.parseInt(request_parts[request_parts.length - 1]);
+
+            for (Waypoint waypoint : mAllWaypoints) {
+                if (waypoint.getId() == id) {
+                    return waypoint;
+                }
+            }
+
+            return null;
         }
     }
 
-    // TODO: call this function when stamp button is clicked
+    // Called when button in StampWaypointFragment is clicked
+    @Override
+    public void onWaypointStamped(Waypoint waypoint) {
+        mVisitedWaypoints.add(waypoint);
+        mVisitedTimestamps.add(new Date());
+        // Change waypoint's style on map
+        markWaypointAsVisitedOnMap(waypoint);
+        // Remove geofence from waypoint
+        for (int i=0; i < mGeofenceList.size(); i++) {
+            if (mGeofenceList.get(i).getRequestId().equals("FOS_"+gameCode+"_"+waypoint.getId())) {
+                mGeofenceList.remove(i);    // don't do this at home kids
+                break;
+            }
+        }
+        unregisterGeofences();
+        if (mGeofenceList.size() > 0) {
+            registerGeofences();
+        } else {
+            // Game ended, go to results.
+            Intent intent = new Intent(GameMapActivity.this, ResultsActivity.class);
+
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("game_start_date", this.gameStartedTimestamp);
+            bundle.putSerializable("waypoints", this.mAllWaypoints);
+            bundle.putSerializable("visited_waypoints", this.mVisitedWaypoints);
+            bundle.putSerializable("visited_timestamps", this.mVisitedTimestamps);
+
+            intent.putExtras(bundle);
+            startActivity(intent);
+            GameMapActivity.this.finish();
+        }
+    }
+
     private void markWaypointAsVisitedOnMap(Waypoint waypoint) {
         // Change circle style
         for (Circle circle : mWaypointCircles) {
@@ -497,6 +612,12 @@ public class GameMapActivity extends FragmentActivity implements
         }
     }
 
+    // region Compass related functions
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        Log.d(TAG, "onAccuracyChanged() was called");
+    }
+
     // React to acceleration and magnetometer readings
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -504,30 +625,22 @@ public class GameMapActivity extends FragmentActivity implements
             lastAcceleration = event.values;
             //Log.d("Acceleration", event.values.toString());
         }
-
         if (event.sensor == magnetometer) {
             lastMagnetometer = event.values;
             //Log.d("Magnetometer", event.values.toString());
         }
-
         // Escape if one of the sensors has yet to receive a value
         if (lastMagnetometer == null || lastAcceleration == null)
             return;
-
         accFilterWindow.add(lastAcceleration);
         magFilterWindow.add(lastMagnetometer);
-
         if (accFilterWindow.size() == COMPASS_FILTER_SIZE) {
-
             rotationResult = SensorManager.getRotationMatrix(rotationMatrix, null,
                     getFilteredReading(accFilterWindow), getFilteredReading(magFilterWindow));
-
             // rotation matrix can fail, no orientation when that happens
             if (rotationResult) {
                 sManager.getOrientation(rotationMatrix, orientation);
-
                 if (compassWidget != null) {
-
                     float angle = orientation[0] * (180.0f / (float) Math.PI);
                     //Log.d("Orientation", Float.toString(angle) + ":" + Float.toString(orientation[0]));
                     compassWidget.setActualRotation(angle);
@@ -554,7 +667,6 @@ public class GameMapActivity extends FragmentActivity implements
         median[0] = calcMedian(x_values);
         median[1] = calcMedian(y_values);
         median[2] = calcMedian(z_values);
-
         return median;
     }
 
@@ -567,64 +679,9 @@ public class GameMapActivity extends FragmentActivity implements
             median = (float) numArray[numArray.length/2];
         return median;
     }
+    // endregion
 
-    // Compass sensor cb
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        Log.d(TAG, "onAccuracyChanged() was called");
-    }
-
-    // START GoogleApiClient callbacks
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        Log.d(TAG, "onConnected() was called");
-        askLocationPermission();
-
-        // Register geofences
-        registerGeofences();
-
-        // Start listening to location updates
-        if (!mRequestingLocationUpdates) {
-            startLocationUpdates();
-        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.d(TAG, "onConnectionSuspended() was called");
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.d(TAG, "onConnectionFailed() was called");
-    }
-    // END GoogleApiClient callbacks
-
-    // START Location callbacks
-    protected void startLocationUpdates() {
-        Log.d(TAG, "startLocationUpdates() was called");
-        mRequestingLocationUpdates = true;
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        }
-    }
-
-    protected void stopLocationUpdates() {
-        Log.d(TAG, "stopLocationUpdates() was called");
-        mRequestingLocationUpdates = false;
-        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        Log.d(TAG, "onLocationChanged() was called");
-        mCurrentLocation = location;
-        compassWidget.setPos(new LatLng(location.getLatitude(), location.getLongitude()));
-        Log.d(TAG, "onLocationChanged: " + location.getLatitude() + "; " + location.getLongitude());
-    }
-    // END Location callbacks
-    
+    // region Save and restore app state
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
@@ -636,106 +693,28 @@ public class GameMapActivity extends FragmentActivity implements
         super.onSaveInstanceState(savedInstanceState);
     }
 
-    // Handle the result from adding geofences to the list of actually checked geofences
-    @Override
-    public void onResult(Status status) {
-        if (status.isSuccess()) {
-            //Toast.makeText(this, "Geofences succesfully modified", Toast.LENGTH_SHORT).show();
-        } else {
-            // Get the status code for the error and log it using a user-friendly message.
-            String errorMessage = GeofenceErrorMessages.getErrorString(this,
-                    status.getStatusCode());
-            Log.e(TAG, errorMessage);
-        }
-    }
-
-    @Override
-    public void onWaypointStamped(Waypoint waypoint) {
-        mVisitedWaypoints.add(waypoint);
-        mVisitedTimestamps.add(new Date());
-        // Change waypoint's style on map
-        markWaypointAsVisitedOnMap(waypoint);
-        // Remove geofence from waypoint
-        for (int i=0; i < mGeofenceList.size(); i++) {
-            if (mGeofenceList.get(i).getRequestId().equals("FOS_"+gameCode+"_"+waypoint.getId())) {
-                mGeofenceList.remove(i);    // don't do this at home kids
-                break;
+    // Use this instead of onRestoreInstanceState() to get finer control of execution order
+    private void updateValuesFromBundle(Bundle savedInstanceState) {
+        if (savedInstanceState != null) {
+            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
+                mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
             }
-        }
-        unregisterGeofences();
-        if (mGeofenceList.size() > 0) {
-            registerGeofences();
-        } else {
-            // Game ended, go to results.
-
-            Intent intent = new Intent(GameMapActivity.this, ResultsActivity.class);
-
-            Bundle bundle = new Bundle();
-            bundle.putSerializable("game_start_date", this.gameStartedTimestamp);
-            bundle.putSerializable("waypoints", this.mAllWaypoints);
-            bundle.putSerializable("visited_waypoints", this.mVisitedWaypoints);
-            bundle.putSerializable("visited_timestamps", this.mVisitedTimestamps);
-
-            intent.putExtras(bundle);
-            startActivity(intent);
-            GameMapActivity.this.finish();
-        }
-    }
-
-    private class GeofenceEventReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(GeofenceTransitionsIntentService.ENTERED_GEOFENCE)) {
-                Log.d(TAG, "Activity received Entered broadcast");
-
-                // Fetch and parse Waypoints from intent
-                Bundle extras = intent.getExtras();
-                ArrayList<String> ids = extras.getStringArrayList("ids");
-                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
-                for (int i = 0; i < ids.size(); i++) {
-                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
-                }
-
-                // Start dialog
-                stampDialog = StampWaypointFragment.getInstance(triggered_waypoints.get(0));
-                stampDialog.show(getSupportFragmentManager(), "stamp");
-
-                // Do something with waypoints here
-                // TODO: add code to show stamping overlay on the UI
-            } else if (intent.getAction().equals(GeofenceTransitionsIntentService.EXITED_GEOFENCE)) {
-                Log.d(TAG, "Activity received Exited broadcast");
-
-                // Fetch and parse Waypoints from intent
-                Bundle extras = intent.getExtras();
-                ArrayList<String> ids = extras.getStringArrayList("ids");
-                ArrayList<Waypoint> triggered_waypoints = new ArrayList<Waypoint>();
-                for (int i = 0; i < ids.size(); i++) {
-                    triggered_waypoints.add(getWaypointWithReguestId(ids.get(i)));
-                }
-
-                // Close stamp dialog if it visible and not null
-                if (stampDialog != null && stampDialog.getDialog() != null && stampDialog.getDialog().isShowing()) {
-                    stampDialog.getDialog().dismiss();
-                }
-
-                // Do something with waypoints here
-                // TODO: add code to hide stamping overlay on the UI
-            } else {
-                Log.e(TAG, "Activity received irrelevant broadcast, intent filter needs tuning");
+            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
+                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
+            }
+            if (savedInstanceState.keySet().contains(WAYPOINTS_KEY)) {
+                mAllWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(WAYPOINTS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(VISITED_WAYPOINTS_KEY)) {
+                mVisitedWaypoints = (ArrayList<Waypoint>) savedInstanceState.getSerializable(VISITED_WAYPOINTS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(VISITED_TIMESTAMPS_KEY)) {
+                mVisitedTimestamps = (ArrayList<Date>) savedInstanceState.getSerializable(VISITED_TIMESTAMPS_KEY);
+            }
+            if (savedInstanceState.keySet().contains(GAME_START_TIMESTAMP)) {
+                gameStartedTimestamp = (Date) savedInstanceState.getSerializable(GAME_START_TIMESTAMP);
             }
         }
     }
-
-    private Waypoint getWaypointWithReguestId(String request_id) {
-        String[] request_parts = request_id.split("_");
-        int id = Integer.parseInt(request_parts[request_parts.length - 1]);
-
-        for (Waypoint waypoint : mAllWaypoints) {
-            if (waypoint.getId() == id) {
-                return waypoint;
-            }
-        }
-
-        return null;
-    }
+    // endregion
 }
