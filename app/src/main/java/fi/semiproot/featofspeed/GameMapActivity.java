@@ -198,7 +198,7 @@ public class GameMapActivity extends FragmentActivity implements
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume() was called");
-        Log.d(TAG, "," + mRequestingLocationUpdates);
+        Log.d(TAG, "mRequestingLocationUpdates: " + mRequestingLocationUpdates);
         if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
             startLocationUpdates();
         }
@@ -574,8 +574,9 @@ public class GameMapActivity extends FragmentActivity implements
     public void onWaypointStamped(Waypoint waypoint) {
         mVisitedWaypoints.add(waypoint);
         mVisitedTimestamps.add(new Date());
-        // Change waypoint's style on map
+        // Update UI
         markWaypointAsVisitedOnMap(waypoint);
+        removeWaypointFromCompass();
         // Remove geofence from waypoint
         for (int i=0; i < mGeofenceList.size(); i++) {
             if (mGeofenceList.get(i).getRequestId().equals("FOS_"+gameCode+"_"+waypoint.getId())) {
@@ -600,6 +601,12 @@ public class GameMapActivity extends FragmentActivity implements
             startActivity(intent);
             GameMapActivity.this.finish();
         }
+    }
+
+    private void removeWaypointFromCompass() {
+        ArrayList<Waypoint> remainingWaypoints = new ArrayList<>(mAllWaypoints);
+        remainingWaypoints.removeAll(mVisitedWaypoints);
+        compassWidget.setWaypoints(remainingWaypoints);
     }
 
     private void markWaypointAsVisitedOnMap(Waypoint waypoint) {
@@ -639,7 +646,7 @@ public class GameMapActivity extends FragmentActivity implements
                     getFilteredReading(accFilterWindow), getFilteredReading(magFilterWindow));
             // rotation matrix can fail, no orientation when that happens
             if (rotationResult) {
-                sManager.getOrientation(rotationMatrix, orientation);
+                SensorManager.getOrientation(rotationMatrix, orientation);
                 if (compassWidget != null) {
                     float angle = orientation[0] * (180.0f / (float) Math.PI);
                     //Log.d("Orientation", Float.toString(angle) + ":" + Float.toString(orientation[0]));
